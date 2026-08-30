@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://vormirtech-ai.github.io/sitemap.xml

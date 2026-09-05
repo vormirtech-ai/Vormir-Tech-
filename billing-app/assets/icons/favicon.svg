@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Lavi The Dhawa">
+  <rect width="64" height="64" rx="14" fill="#1d2b45"/>
+  <circle cx="32" cy="32" r="15" fill="none" stroke="#f0f3f8" stroke-width="2.4"/>
+  <circle cx="32" cy="32" r="11" fill="none" stroke="#f0f3f8" stroke-width="1.1" opacity=".55"/>
+  <text x="32" y="37.4" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif"
+        font-size="13" font-weight="bold" fill="#f0f3f8" letter-spacing="0.5">DA</text>
+  <g fill="#f0f3f8">
+    <rect x="10.2" y="19" width="1.7" height="9" rx=".7"/>
+    <rect x="13.2" y="19" width="1.7" height="9" rx=".7"/>
+    <rect x="16.2" y="19" width="1.7" height="9" rx=".7"/>
+    <rect x="12.6" y="27" width="2.9" height="18" rx="1.4"/>
+    <ellipse cx="50.2" cy="25" rx="3.6" ry="6"/>
+    <rect x="48.8" y="29" width="2.9" height="16" rx="1.4"/>
+  </g>
+</svg>

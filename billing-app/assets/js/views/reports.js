@@ -1,0 +1,246 @@
+/*  views/reports.js — sales dashboard and the end-of-day summary. */
+(function (App) {
+  'use strict';
+
+  var U = App.U, UI = App.UI, Store = App.Store;
+
+  var range = { from: U.today(), to: U.today() };
+  var bills = [];
+  var root = null;
+
+  function presets() {
+    var t = U.today();
+    var firstThis = U.month() + '-01';
+    var lastMonthEnd = U.addDays(firstThis, -1);
+    var firstLast = lastMonthEnd.slice(0, 7) + '-01';
+    return [
+      ['Today', { from: t, to: t }],
+      ['Yesterday', { from: U.addDays(t, -1), to: U.addDays(t, -1) }],
+      ['Last 7 Days', { from: U.addDays(t, -6), to: t }],
+      ['This Month', { from: firstThis, to: t }],
+      ['Last Month', { from: firstLast, to: lastMonthEnd }]
+    ];
+  }
+
+  function load() {
+    return Store.billsBetween(range.from, range.to).then(function (rows) {
+      bills = rows;
+      draw();
+    });
+  }
+
+  function hourlyBuckets(paid) {
+    var buckets = [];
+    for (var h = 0; h < 24; h++) buckets.push({ label: (h % 12 || 12) + (h < 12 ? 'am' : 'pm'), value: 0 });
+    paid.forEach(function (b) { buckets[new Date(b.createdAt).getHours()].value += b.total; });
+    // Trim the closed hours at either end so the chart isn't mostly empty.
+    var first = buckets.findIndex(function (b) { return b.value > 0; });
+    var last = buckets.length - 1 - buckets.slice().reverse().findIndex(function (b) { return b.value > 0; });
+    if (first === -1) return buckets.slice(8, 24);
+    return buckets.slice(Math.max(0, first - 1), Math.min(24, last + 2));
+  }
+
+  function dailyBuckets() {
+    var out = [];
+    var cursor = range.from;
+    var guard = 0;
+    var byDate = Store.summarise(bills).byDate;
+    while (cursor <= range.to && guard++ < 400) {
+      out.push({ label: U.dateLabel(cursor), value: byDate[cursor] || 0, iso: cursor });
+      cursor = U.addDays(cursor, 1);
+    }
+    var max = Math.max.apply(null, out.map(function (d) { return d.value; }).concat([0]));
+    out.forEach(function (d) { d.highlight = d.value === max && max > 0; });
+    return out;
+  }
+
+  function printSummary() {
+    var s = Store.settings();
+    var sum = Store.summarise(bills);
+    var modeRows = Object.keys(sum.byMode).map(function (m) {
+      return '<tr><td>' + U.esc(m) + '</td><td class="r">₹' + U.money(sum.byMode[m]) + '</td></tr>';
+    }).join('') || '<tr><td colspan="2">No payments recorded</td></tr>';
+
+    var itemRows = sum.topItems.slice(0, 25).map(function (i) {
+      return '<tr><td>' + U.esc(i.name) + '</td><td class="c">' + i.qty + '</td><td class="r">₹' + U.money(i.amount) + '</td></tr>';
+    }).join('') || '<tr><td colspan="3">No items sold</td></tr>';
+
+    UI.print('<!doctype html><html><head><meta charset="utf-8"><title>Sales Summary</title><style>' +
+      '@page{size:A4;margin:14mm}body{font-family:"Segoe UI",Arial,sans-serif;color:#14181f}' +
+      'h1{font-size:22px;color:#1d2b45;margin:0}.tag{color:#b0311f;font-weight:600}' +
+      '.period{color:#5a6472;font-size:12px;margin:4px 0 18px}' +
+      'h2{font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#5a6472;margin:20px 0 6px}' +
+      'table{width:100%;border-collapse:collapse;font-size:12px}' +
+      'th{background:#1d2b45;color:#fff;text-align:left;padding:6px 9px;font-size:10px;text-transform:uppercase}' +
+      'td{padding:6px 9px;border-bottom:1px solid #e9ecf1}.r{text-align:right}.c{text-align:center}' +
+      '.big td{font-weight:800;font-size:15px;color:#1d2b45;border-top:2px solid #1d2b45}' +
+      '.grid{display:flex;gap:24px}.grid>div{flex:1}' +
+      '</style></head><body>' +
+      '<h1>' + U.esc(s.name) + '</h1><div class="tag">' + U.esc(s.tagline) + '</div>' +
+      '<div class="period">Sales summary • ' + U.esc(U.dateLabel(range.from)) +
+      (range.from === range.to ? '' : ' to ' + U.esc(U.dateLabel(range.to))) +
+      ' • printed ' + U.esc(U.dateTimeLabel(Date.now())) + '</div>' +
+      '<div class="grid"><div>' +
+      '<h2>Collection</h2><table>' +
+      '<tr><td>Paid bills</td><td class="r">' + sum.bills + '</td></tr>' +
+      '<tr><td>Gross sales</td><td class="r">₹' + U.money(sum.gross) + '</td></tr>' +
+      '<tr><td>Discount</td><td class="r">− ₹' + U.money(sum.discount) + '</td></tr>' +
+      '<tr><td>Tax collected</td><td class="r">₹' + U.money(sum.tax) + '</td></tr>' +
+      '<tr class="big"><td>Net sales</td><td class="r">₹' + U.money(sum.net) + '</td></tr>' +
+      '<tr><td>Average bill</td><td class="r">₹' + U.money(sum.avg) + '</td></tr>' +
+      '<tr><td>Cancelled / held</td><td class="r">' + sum.cancelled + ' / ' + sum.open + '</td></tr>' +
+      '</table></div><div>' +
+      '<h2>Payment modes</h2><table>' + modeRows + '</table>' +
+      '</div></div>' +
+      '<h2>Item sales</h2><table><thead><tr><th>Item</th><th class="c">Qty</th><th class="r">Amount</th></tr></thead>' +
+      '<tbody>' + itemRows + '</tbody></table>' +
+      '<p style="margin-top:26px;font-size:11px;color:#8a94a3">Generated by ' + U.esc(s.name) + ' billing system — data held on this device.</p>' +
+      '</body></html>', 'Sales summary');
+  }
+
+  function draw() {
+    var s = Store.settings();
+    var sum = Store.summarise(bills);
+    var paid = bills.filter(function (b) { return b.status === 'paid'; });
+    var singleDay = range.from === range.to;
+
+    var statsHost = root.querySelector('#rep-stats');
+    statsHost.innerHTML = '';
+    [
+      UI.stat('Net Sales', s.currency + U.money(sum.net), sum.bills + ' bills', 'primary'),
+      UI.stat('Average Bill', s.currency + U.money(sum.avg), 'per bill'),
+      UI.stat('Items Sold', String(U.sum(sum.topItems, function (i) { return i.qty; })), sum.topItems.length + ' unique items'),
+      UI.stat('Cash / Digital',
+        s.currency + U.moneyShort(sum.byMode.Cash || 0) + '  •  ' +
+        s.currency + U.moneyShort((sum.byMode.UPI || 0) + (sum.byMode.Card || 0)),
+        (sum.byMode.Due ? 'Due: ' + s.currency + U.moneyShort(sum.byMode.Due) : 'Cash vs UPI + Card'),
+        sum.byMode.Due ? 'warn' : '')
+    ].forEach(function (n) { statsHost.appendChild(n); });
+
+    // ---- chart ----
+    var chartHost = root.querySelector('#rep-chart');
+    var data = singleDay ? hourlyBuckets(paid) : dailyBuckets();
+    chartHost.innerHTML = '';
+    chartHost.appendChild(U.el('div', { class: 'panel__head' }, [
+      U.el('h3', { text: singleDay ? 'Sales by hour' : 'Sales by day' }),
+      U.el('span', { class: 'muted', text: singleDay ? U.dateLabel(range.from) : U.dateLabel(range.from) + ' – ' + U.dateLabel(range.to) })
+    ]));
+    chartHost.appendChild(UI.barChart(data, {
+      height: 34, label: 'Sales chart', format: function (v) { return '₹' + U.money(v); }
+    }));
+    chartHost.appendChild(U.el('div', { class: 'chart-axis' }, data.map(function (d, i) {
+      var show = data.length <= 12 || i % Math.ceil(data.length / 10) === 0;
+      return U.el('span', { class: 'chart-axis__tick', text: show ? (singleDay ? d.label : d.label.slice(0, 6)) : '' });
+    })));
+
+    // ---- top items ----
+    var itemsHost = root.querySelector('#rep-items');
+    itemsHost.innerHTML = '';
+    itemsHost.appendChild(U.el('div', { class: 'panel__head' }, [U.el('h3', { text: 'Top selling items' })]));
+    itemsHost.appendChild(UI.table([
+      { key: 'rank', label: '#', width: '40px', align: 'center', render: function (r, i) { return String(i + 1); } },
+      { key: 'name', label: 'Item' },
+      { key: 'qty', label: 'Qty', align: 'center', width: '70px' },
+      { key: 'amount', label: 'Amount', align: 'right', width: '110px',
+        render: function (r) { return '₹' + U.money(r.amount); } }
+    ], sum.topItems.slice(0, 12), { empty: 'No sales in this period.' }));
+
+    // ---- category + payment split ----
+    var splitHost = root.querySelector('#rep-split');
+    splitHost.innerHTML = '';
+    var catRows = Object.keys(sum.byCat).map(function (c) {
+      return { name: Store.category(c).icon + ' ' + Store.category(c).name, value: sum.byCat[c] };
+    }).sort(function (a, b) { return b.value - a.value; });
+    var totalCat = U.sum(catRows, function (r) { return r.value; }) || 1;
+
+    splitHost.appendChild(U.el('div', { class: 'panel__head' }, [U.el('h3', { text: 'Category share' })]));
+    var barsHost = U.el('div', { class: 'share' });
+    catRows.forEach(function (r) {
+      var pct = Math.round(r.value / totalCat * 100);
+      barsHost.appendChild(U.el('div', { class: 'share__row' }, [
+        U.el('span', { class: 'share__name', text: r.name }),
+        U.el('span', { class: 'share__track' }, [
+          U.el('span', { class: 'share__fill', style: 'width:' + Math.max(pct, 1) + '%' })
+        ]),
+        U.el('span', { class: 'share__val', text: '₹' + U.moneyShort(r.value) + ' · ' + pct + '%' })
+      ]));
+    });
+    if (!catRows.length) barsHost.appendChild(U.el('p', { class: 'muted', text: 'No sales in this period.' }));
+    splitHost.appendChild(barsHost);
+
+    var modeRows = Object.keys(sum.byMode).map(function (m) { return { mode: m, value: sum.byMode[m] }; });
+    splitHost.appendChild(U.el('div', { class: 'panel__head panel__head--sub' }, [U.el('h3', { text: 'Payment modes' })]));
+    splitHost.appendChild(UI.table([
+      { key: 'mode', label: 'Mode' },
+      { key: 'value', label: 'Collected', align: 'right',
+        render: function (r) { return '<strong>₹' + U.money(r.value) + '</strong>'; },
+        footer: function (rs) { return '<strong>₹' + U.money(U.sum(rs, function (r) { return r.value; })) + '</strong>'; } }
+    ], modeRows, { empty: 'Nothing collected yet.', footer: true }));
+
+    // ---- operations snapshot ----
+    var opsHost = root.querySelector('#rep-ops');
+    opsHost.innerHTML = '';
+    var low = Store.lowStock();
+    opsHost.appendChild(U.el('div', { class: 'panel__head' }, [U.el('h3', { text: 'Operations snapshot' })]));
+    var ops = U.el('div', { class: 'ops' });
+    [
+      ['Stock value', '₹' + U.money(Store.stockValue()), 'inventory'],
+      ['Items low on stock', String(low.length), 'inventory'],
+      ['Active staff', String(Store.activeEmployees().length), 'staff'],
+      ['Menu items', String(Store.activeMenu().length), 'menu'],
+      ['Held orders', String(sum.open), 'pos'],
+      ['Cancelled bills', String(sum.cancelled), 'bills']
+    ].forEach(function (o) {
+      ops.appendChild(U.el('button', { type: 'button', class: 'ops__cell', onclick: function () { App.Router.go(o[2]); } }, [
+        U.el('span', { class: 'ops__val', text: o[1] }),
+        U.el('span', { class: 'ops__label', text: o[0] })
+      ]));
+    });
+    opsHost.appendChild(ops);
+  }
+
+  function render(container) {
+    root = container;
+    container.innerHTML = '';
+
+    container.appendChild(UI.section('Reports', 'How the dhaba is trading.', [
+      UI.button('Print Summary', printSummary, 'btn--ghost', '🖨')
+    ]));
+
+    var presetBtns = presets().map(function (p) {
+      return UI.button(p[0], function () { range = p[1]; sync(); load(); }, 'btn--chip');
+    });
+
+    container.appendChild(U.el('div', { class: 'filters card' }, [
+      U.el('div', { class: 'filters__group' }, [
+        U.el('label', { class: 'field__label', text: 'From' }),
+        U.el('input', { id: 'rep-from', class: 'input', type: 'date', value: range.from,
+          onchange: function (e) { range.from = e.target.value || range.from; load(); } })
+      ]),
+      U.el('div', { class: 'filters__group' }, [
+        U.el('label', { class: 'field__label', text: 'To' }),
+        U.el('input', { id: 'rep-to', class: 'input', type: 'date', value: range.to,
+          onchange: function (e) { range.to = e.target.value || range.to; load(); } })
+      ]),
+      U.el('div', { class: 'filters__presets filters__presets--grow' }, presetBtns)
+    ]));
+
+    function sync() {
+      container.querySelector('#rep-from').value = range.from;
+      container.querySelector('#rep-to').value = range.to;
+    }
+
+    container.appendChild(U.el('div', { id: 'rep-stats', class: 'stat-grid' }));
+    container.appendChild(U.el('div', { id: 'rep-chart', class: 'card panel' }));
+    container.appendChild(U.el('div', { class: 'grid-2' }, [
+      U.el('div', { id: 'rep-items', class: 'card panel panel--flush' }),
+      U.el('div', { id: 'rep-split', class: 'card panel' })
+    ]));
+    container.appendChild(U.el('div', { id: 'rep-ops', class: 'card panel' }));
+
+    load();
+  }
+
+  App.Views = App.Views || {};
+  App.Views.reports = { title: 'Reports', render: render };
+})(window.App = window.App || {});

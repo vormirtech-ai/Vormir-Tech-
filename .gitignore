@@ -1,0 +1,13 @@
+# Build scratch
+node_modules/
+.DS_Store
+__pycache__/
+*.pyc
+
+# One-off delivery bundle: it packs billing-app/, android/, flutter_app/ and the
+# workflows into a single file for handing over. Everything inside it is already
+# tracked here, and GitHub's own "Download ZIP" does the same job, so keeping a
+# copy in the repository would only duplicate source and go stale.
+# The ready-to-host build of billing-app/ (dist/lavi-dhaba-billing-app.zip) IS
+# tracked, because that one is a real deliverable you cannot get any other way.
+dist/lavi-billing-source.zip

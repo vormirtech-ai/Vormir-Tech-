@@ -19,6 +19,16 @@
     adjust:  { label: 'Stock Count',         badge: 'amber', sign: '=' }
   };
 
+  // Best-guess expense head for a pantry item, so purchases file themselves.
+  var CAT_TO_EXPENSE = {
+    Vegetable: 'Vegetables', Grocery: 'Grocery', Meat: 'Meat & Fish',
+    Dairy: 'Dairy', Spice: 'Grocery', Fuel: 'Gas & Fuel'
+  };
+
+  function expenseCatFor(item) {
+    return CAT_TO_EXPENSE[item.cat] || 'Grocery';
+  }
+
   function categories() {
     var set = {};
     Store.inventory().forEach(function (i) { set[i.cat || 'Other'] = true; });
@@ -79,7 +89,9 @@
         value: item.cost, width: 'half', hint: type === 'in' ? 'Updates the item cost price.' : '' },
       { name: 'date', label: 'Date', type: 'date', value: U.today(), width: 'half' },
       type === 'in' ? { name: 'supplier', label: 'Supplier', type: 'text', value: item.supplier, width: 'half' } : null,
-      { name: 'note', label: 'Note', type: 'text', placeholder: 'Optional' }
+      { name: 'note', label: 'Note', type: 'text', placeholder: 'Optional' },
+      type === 'in' ? { name: 'asExpense', label: 'Also record this purchase as an expense', type: 'checkbox', value: true,
+        hint: 'Keeps the Expenses screen and the profit figure honest.' } : null
     ]);
 
     var body = U.el('div', {}, [
@@ -103,6 +115,18 @@
               rate: v.rate, note: v.note, supplier: v.supplier, date: v.date
             }).then(function (mv) {
               UI.ok(item.name + ': ' + meta.sign + Math.abs(mv.qty) + ' ' + item.unit + ' → ' + mv.after + ' ' + item.unit);
+              if (type === 'in' && v.asExpense && mv.value > 0) {
+                return Store.saveExpense({
+                  cat: expenseCatFor(item),
+                  amount: mv.value,
+                  paidTo: v.supplier || item.supplier || '',
+                  date: v.date,
+                  note: item.name + ' — ' + U.moneyShort(mv.qty) + ' ' + item.unit,
+                  ref: mv.id
+                }).then(function () { return mv; });
+              }
+              return mv;
+            }).then(function () {
               close(true);
               refresh();
               return true;

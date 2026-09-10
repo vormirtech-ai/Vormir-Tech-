@@ -38,6 +38,7 @@ assets/
 robots.txt, sitemap.xml, .nojekyll
 
 billing-app/            offline billing system for Lavi The Dhawa (see its own README)
+android/                Android app wrapping billing-app (see its own README)
 dist/                   ready-to-host zip of billing-app/
 ```
 
@@ -48,6 +49,10 @@ attendance system. It ships with this site and is served at
 `https://<username>.github.io/<repo>/billing-app/`, or it can be unzipped from
 `dist/lavi-dhaba-billing-app.zip` and hosted anywhere — it needs no server, no
 build step and no internet connection. See `billing-app/README.md`.
+
+`android/` wraps the same web app as an Android APK for tablet use. GitHub
+Actions builds and signs it (**Actions → Build Android APK**); see
+`android/README.md`.
 
 ## Editing the content
 

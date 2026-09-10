@@ -6,6 +6,8 @@
 
   var range = { from: U.today(), to: U.today() };
   var bills = [];
+  var expenses = [];
+  var dueTotal = 0;
   var root = null;
 
   function presets() {
@@ -23,8 +25,14 @@
   }
 
   function load() {
-    return Store.billsBetween(range.from, range.to).then(function (rows) {
-      bills = rows;
+    return Promise.all([
+      Store.billsBetween(range.from, range.to),
+      Store.expensesBetween(range.from, range.to),
+      Store.openDueBills()
+    ]).then(function (r) {
+      bills = r[0];
+      expenses = r[1];
+      dueTotal = U.round2(U.sum(r[2], function (b) { return U.num(b.dueAmount); }));
       draw();
     });
   }
@@ -57,6 +65,8 @@
   function printSummary() {
     var s = Store.settings();
     var sum = Store.summarise(bills);
+    var spent = Store.summariseExpenses(expenses);
+    var profit = U.round2(sum.net - spent.total);
     var modeRows = Object.keys(sum.byMode).map(function (m) {
       return '<tr><td>' + U.esc(m) + '</td><td class="r">₹' + U.money(sum.byMode[m]) + '</td></tr>';
     }).join('') || '<tr><td colspan="2">No payments recorded</td></tr>';
@@ -89,8 +99,18 @@
       '<tr class="big"><td>Net sales</td><td class="r">₹' + U.money(sum.net) + '</td></tr>' +
       '<tr><td>Average bill</td><td class="r">₹' + U.money(sum.avg) + '</td></tr>' +
       '<tr><td>Cancelled / held</td><td class="r">' + sum.cancelled + ' / ' + sum.open + '</td></tr>' +
+      '</table>' +
+      '<h2>Kharcha</h2><table>' +
+      (Object.keys(spent.byCat).length
+        ? Object.keys(spent.byCat).sort(function (a, b) { return spent.byCat[b] - spent.byCat[a]; })
+            .map(function (c) { return '<tr><td>' + U.esc(c) + '</td><td class="r">₹' + U.money(spent.byCat[c]) + '</td></tr>'; }).join('')
+        : '<tr><td colspan="2">No expenses recorded</td></tr>') +
+      '<tr class="big"><td>Total spent</td><td class="r">₹' + U.money(spent.total) + '</td></tr>' +
+      '<tr class="big"><td>' + (profit >= 0 ? 'Profit' : 'Loss') + '</td><td class="r">₹' + U.money(Math.abs(profit)) + '</td></tr>' +
       '</table></div><div>' +
       '<h2>Payment modes</h2><table>' + modeRows + '</table>' +
+      '<h2>Udhaar</h2><table><tr><td>Outstanding across all customers</td><td class="r">₹' +
+      U.money(dueTotal) + '</td></tr></table>' +
       '</div></div>' +
       '<h2>Item sales</h2><table><thead><tr><th>Item</th><th class="c">Qty</th><th class="r">Amount</th></tr></thead>' +
       '<tbody>' + itemRows + '</tbody></table>' +
@@ -104,17 +124,23 @@
     var paid = bills.filter(function (b) { return b.status === 'paid'; });
     var singleDay = range.from === range.to;
 
+    var spent = Store.summariseExpenses(expenses);
+    var profit = U.round2(sum.net - spent.total);
+
     var statsHost = root.querySelector('#rep-stats');
     statsHost.innerHTML = '';
     [
       UI.stat('Net Sales', s.currency + U.money(sum.net), sum.bills + ' bills', 'primary'),
+      UI.stat('Kharcha', s.currency + U.money(spent.total), spent.count + ' expenses', 'danger'),
+      UI.stat(profit >= 0 ? 'Profit' : 'Loss', s.currency + U.money(Math.abs(profit)),
+        'sales − kharcha', profit >= 0 ? 'primary' : 'danger'),
       UI.stat('Average Bill', s.currency + U.money(sum.avg), 'per bill'),
-      UI.stat('Items Sold', String(U.sum(sum.topItems, function (i) { return i.qty; })), sum.topItems.length + ' unique items'),
       UI.stat('Cash / Digital',
         s.currency + U.moneyShort(sum.byMode.Cash || 0) + '  •  ' +
         s.currency + U.moneyShort((sum.byMode.UPI || 0) + (sum.byMode.Card || 0)),
-        (sum.byMode.Due ? 'Due: ' + s.currency + U.moneyShort(sum.byMode.Due) : 'Cash vs UPI + Card'),
-        sum.byMode.Due ? 'warn' : '')
+        'Cash vs UPI + Card'),
+      UI.stat('Udhaar Outstanding', s.currency + U.money(dueTotal),
+        dueTotal ? 'across all customers' : 'nothing pending', dueTotal ? 'warn' : '')
     ].forEach(function (n) { statsHost.appendChild(n); });
 
     // ---- chart ----
@@ -184,8 +210,10 @@
     opsHost.appendChild(U.el('div', { class: 'panel__head' }, [U.el('h3', { text: 'Operations snapshot' })]));
     var ops = U.el('div', { class: 'ops' });
     [
-      ['Stock value', '₹' + U.money(Store.stockValue()), 'inventory'],
+      ['Stock value', '₹' + U.moneyShort(Store.stockValue()), 'inventory'],
       ['Items low on stock', String(low.length), 'inventory'],
+      ['Udhaar outstanding', '₹' + U.moneyShort(dueTotal), 'dues'],
+      ['Kharcha this period', '₹' + U.moneyShort(spent.total), 'expenses'],
       ['Active staff', String(Store.activeEmployees().length), 'staff'],
       ['Menu items', String(Store.activeMenu().length), 'menu'],
       ['Held orders', String(sum.open), 'pos'],

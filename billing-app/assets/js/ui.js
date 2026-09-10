@@ -160,7 +160,10 @@
 
     fields.forEach(function (f) {
       if (!f) return;
-      var wrap = U.el('div', { class: 'field field--' + (f.width || 'full') });
+      var wrap = U.el('div', {
+        class: 'field field--' + (f.width || 'full'),
+        dataset: { field: f.name }
+      });
       var id = 'f-' + f.name + '-' + Math.random().toString(36).slice(2, 6);
       var input;
 
@@ -208,6 +211,14 @@
     return {
       node: grid,
       inputs: inputs,
+      show: function (name, visible) {
+        var wrap = grid.querySelector('[data-field="' + name + '"]');
+        if (wrap) wrap.hidden = !visible;
+      },
+      label: function (name, text) {
+        var wrap = grid.querySelector('[data-field="' + name + '"] .field__label');
+        if (wrap) wrap.textContent = text;
+      },
       values: function () {
         var out = {};
         fields.forEach(function (f) {
@@ -223,6 +234,8 @@
         var bad = null;
         fields.forEach(function (f) {
           if (!f || !f.required || bad) return;
+          var wrap = grid.querySelector('[data-field="' + f.name + '"]');
+          if (wrap && wrap.hidden) return;
           var input = inputs[f.name];
           var v = f.type === 'checkbox' ? input.checked : String(input.value).trim();
           if (!v && v !== 0) { bad = f; }
@@ -371,6 +384,14 @@
    *  POS screen untouched.
    */
   UI.print = function (html, title) {
+    // Inside the Android wrapper, hand the page to the system print service:
+    // a WebView ignores window.print() entirely.
+    var bridge = App.U.native();
+    if (bridge && bridge.printHtml) {
+      bridge.printHtml(title || 'Bill', html);
+      return;
+    }
+
     var frame = document.getElementById('print-frame');
     if (!frame) {
       frame = U.el('iframe', { id: 'print-frame', 'aria-hidden': 'true', tabindex: '-1' });

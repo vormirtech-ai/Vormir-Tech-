@@ -8,6 +8,7 @@
   var day = U.today();
   var tab = 'daily';
   var rows = [];          // attendance rows for the selected month
+  var ledger = [];        // staff money taken during the same month
   var root = null;
 
   var CYCLE = ['present', 'half', 'absent', 'leave', 'off'];
@@ -23,11 +24,17 @@
   }
 
   function load() {
-    return Store.attendanceForMonth(ym).then(function (list) {
-      rows = list;
-      return list;
+    return Promise.all([
+      Store.attendanceForMonth(ym),
+      Store.staffLedgerForMonth(ym)
+    ]).then(function (r) {
+      rows = r[0];
+      ledger = r[1];
+      return rows;
     });
   }
+
+  function payroll(emp) { return Store.payrollFor(emp, rows, ym, ledger); }
 
   function setStatus(empId, date, status) {
     var apply = status
@@ -110,6 +117,10 @@
         ]),
         buttons,
         U.el('div', { class: 'att-row__times' }, [
+          U.el('button', {
+            type: 'button', class: 'btn btn--chip btn--money', title: 'Record money taken by ' + emp.name,
+            onclick: function () { quickTake(emp); }
+          }, [U.el('span', { text: '₹ Paisa diya' })]),
           U.el('input', { class: 'input input--time', type: 'time', value: record.inTime || '', title: 'In time',
             onchange: function (e) { Store.markAttendance(emp.id, day, { inTime: e.target.value, status: statusOf(emp.id, day) || 'present' }).then(load); } }),
           U.el('span', { class: 'muted', text: '→' }),
@@ -129,6 +140,59 @@
         U.el('span', { text: m.label })
       ]);
     })));
+  }
+
+  /*  Money handed to a staff member, recorded without leaving the
+   *  attendance screen — the moment it actually happens.
+   */
+  function quickTake(emp) {
+    var taken = U.round2(U.sum(ledger.filter(function (r) { return r.empId === emp.id; }), function (r) {
+      return r.type === 'bonus' ? -r.amount : r.amount;
+    }));
+
+    var form = UI.form([
+      { name: 'amount', label: 'Amount (₹)', type: 'number', min: 0, step: '1', required: true,
+        autofocus: true, width: 'half' },
+      { name: 'type', label: 'Type', type: 'select', value: 'advance', width: 'half',
+        options: Object.keys(Store.LEDGER_TYPES).map(function (k) {
+          return { value: k, label: Store.LEDGER_TYPES[k].label };
+        }) },
+      { name: 'note', label: 'Note', type: 'text', placeholder: 'Optional' }
+    ]);
+
+    var presets = U.el('div', { class: 'amount-presets' }, [50, 100, 200, 500, 1000].map(function (n) {
+      return U.el('button', { type: 'button', class: 'btn btn--chip', text: '₹' + n,
+        onclick: function () { form.inputs.amount.value = n; form.inputs.amount.focus(); } });
+    }));
+
+    UI.modal({
+      title: 'Paisa diya — ' + emp.name,
+      body: U.el('div', {}, [
+        U.el('div', { class: 'settle__total' }, [
+          U.el('span', { text: 'Already taken in ' + U.monthLabel(ym) }),
+          U.el('strong', { text: '₹' + U.money(taken) })
+        ]),
+        presets,
+        form.node
+      ]),
+      actions: [
+        { label: 'Cancel', value: false },
+        {
+          label: 'Save entry', primary: true,
+          onClick: function (close) {
+            if (!form.validate()) return false;
+            var v = form.values();
+            return Store.addStaffLedger({
+              empId: emp.id, amount: v.amount, type: v.type, date: day, note: v.note
+            }).then(function () {
+              UI.ok(emp.name + ': ₹' + U.money(v.amount));
+              close(true);
+              return load().then(refresh);
+            });
+          }
+        }
+      ]
+    });
   }
 
   /* ------------------------------------------------- month sheet */
@@ -219,10 +283,19 @@
       '<tr><td>Day rate</td><td class="r">₹' + U.money(pay.dayRate) + '</td></tr>' +
       '<tr><td>Basic earned</td><td class="r">₹' + U.money(pay.base) + '</td></tr>' +
       '<tr><td>Overtime (' + pay.overtime + ' hrs)</td><td class="r">₹' + U.money(pay.otPay) + '</td></tr>' +
-      '<tr><td>Advance / deduction</td><td class="r">− ₹' + U.money(pay.advance) + '</td></tr>' +
+      (pay.bonus ? '<tr><td>Bonus</td><td class="r">+ ₹' + U.money(pay.bonus) + '</td></tr>' : '') +
+      '<tr><td>Kharcha / advance taken</td><td class="r">− ₹' + U.money(pay.advance) + '</td></tr>' +
       '<tr class="total"><td>Net Payable</td><td class="r">₹' + U.money(pay.payable) + '</td></tr>' +
       '</table>' +
       '<p style="font-size:12px;color:#5a6472">Amount in words: ' + U.esc(U.words(pay.payable)) + '</p>' +
+      (pay.entries.length
+        ? '<h2>Kharcha during the month</h2><table>' + pay.entries.map(function (r) {
+            return '<tr><td>' + U.esc(U.dateLabel(r.date)) + ' — ' +
+              U.esc((Store.LEDGER_TYPES[r.type] || {}).label || r.type) +
+              (r.note ? ' (' + U.esc(r.note) + ')' : '') +
+              '</td><td class="r">' + (r.type === 'bonus' ? '+ ' : '− ') + '₹' + U.money(r.amount) + '</td></tr>';
+          }).join('') + '</table>'
+        : '') +
       '<div class="sign"><span>Employee signature</span><span>For ' + U.esc(s.name) + '</span></div>' +
       '</body></html>', 'Payslip');
   }
@@ -233,7 +306,7 @@
     host.innerHTML = '';
 
     var data = staff.map(function (emp) {
-      return { emp: emp, pay: Store.payrollFor(emp, rows, ym) };
+      return { emp: emp, pay: payroll(emp) };
     });
 
     host.appendChild(UI.table([
@@ -249,8 +322,14 @@
         render: function (r) { return r.pay.overtime + ' hrs<div class="muted">₹' + U.money(r.pay.otPay) + '</div>'; } },
       { key: 'base', label: 'Earned', align: 'right', width: '110px',
         render: function (r) { return '₹' + U.money(r.pay.base); } },
-      { key: 'advance', label: 'Advance', align: 'right', width: '110px',
-        render: function (r) { return r.pay.advance ? '− ₹' + U.money(r.pay.advance) : '<span class="muted">—</span>'; } },
+      { key: 'advance', label: 'Kharcha Taken', align: 'right', width: '130px',
+        render: function (r) {
+          if (!r.pay.advance && !r.pay.bonus) return '<span class="muted">—</span>';
+          return (r.pay.advance ? '<strong class="is-low">− ₹' + U.money(r.pay.advance) + '</strong>' : '') +
+            (r.pay.bonus ? '<div class="muted">+ ₹' + U.money(r.pay.bonus) + ' bonus</div>' : '') +
+            (r.pay.entries.length ? '<div class="muted">' + r.pay.entries.length + ' entries</div>' : '');
+        },
+        footer: function (rs) { return '<strong class="is-low">− ₹' + U.money(U.sum(rs, function (r) { return r.pay.advance; })) + '</strong>'; } },
       { key: 'payable', label: 'Net Payable', align: 'right', width: '130px',
         render: function (r) { return '<strong>₹' + U.money(r.pay.payable) + '</strong>'; },
         footer: function (rs) { return '<strong>₹' + U.money(U.sum(rs, function (r) { return r.pay.payable; })) + '</strong>'; } },
@@ -258,7 +337,7 @@
         render: function (r) { return '<button type="button" class="link-btn" data-slip="' + U.esc(r.emp.id) + '">Payslip</button>'; } }
     ], data, { empty: 'Add staff to see payroll.', footer: true }));
 
-    host.appendChild(U.el('p', { class: 'muted hint', text: 'Monthly salaries are pro-rated over the calendar month; daily wages are paid per day worked. Overtime is paid at the day rate ÷ 8 per hour. Set an advance on the staff record to deduct it here.' }));
+    host.appendChild(U.el('p', { class: 'muted hint', text: 'Monthly salaries are pro-rated over the calendar month; daily wages are paid per day worked. Overtime is paid at the day rate ÷ 8 per hour. Every rupee recorded as “Paisa diya” during the month is deducted here automatically.' }));
 
     U.on(host, 'click', '[data-slip]', function (e, btn) {
       var row = data.filter(function (r) { return r.emp.id === btn.dataset.slip; })[0];
@@ -275,7 +354,7 @@
     var present = todayRows.filter(function (r) { return r.status === 'present' || r.status === 'paidleave'; }).length;
     var half = todayRows.filter(function (r) { return r.status === 'half'; }).length;
     var absent = todayRows.filter(function (r) { return r.status === 'absent'; }).length;
-    var payable = U.sum(staff, function (e) { return Store.payrollFor(e, rows, ym).payable; });
+    var payable = U.sum(staff, function (e) { return payroll(e).payable; });
 
     host.innerHTML = '';
     [
@@ -295,7 +374,7 @@
 
     var out = [header];
     staff.forEach(function (emp) {
-      var pay = Store.payrollFor(emp, rows, ym);
+      var pay = payroll(emp);
       var line = [emp.name, emp.role || ''];
       for (var i = 1; i <= days; i++) {
         var st = statusOf(emp.id, ym + '-' + U.pad2(i));

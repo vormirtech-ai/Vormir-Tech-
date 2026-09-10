@@ -83,6 +83,7 @@
     cart = [];
     meta = newMeta();
     clearDraft();
+    closeCart();
     renderCart();
   }
 
@@ -218,6 +219,14 @@
 
   /* ------------------------------------------------------- cart panel */
 
+  function toggleCart() {
+    document.body.classList.toggle('is-cart-open');
+  }
+
+  function closeCart() {
+    document.body.classList.remove('is-cart-open');
+  }
+
   function totals() {
     return Store.calcTotals(cart, {
       discountType: meta.discountType,
@@ -291,10 +300,17 @@
       ref.textContent = meta.billNo ? 'Editing ' + meta.billNo : 'New order';
       ref.className = 'cart__ref' + (meta.billNo ? ' is-editing' : '');
     }
-    var settle = root.querySelector('#btn-settle');
-    if (settle) settle.disabled = !cart.length;
+    var settleBtn = root.querySelector('#btn-settle');
+    if (settleBtn) settleBtn.disabled = !cart.length;
     var hold = root.querySelector('#btn-hold');
     if (hold) hold.disabled = !cart.length;
+
+    var barCount = root.querySelector('#bar-count');
+    var barTotal = root.querySelector('#bar-total');
+    var barSettle = root.querySelector('#bar-settle');
+    if (barCount) barCount.textContent = t.qty ? t.qty + (t.qty === 1 ? ' item' : ' items') : 'No items yet';
+    if (barTotal) barTotal.textContent = s.currency + U.money(t.total);
+    if (barSettle) barSettle.disabled = !cart.length;
   }
 
   function editNote(key) {
@@ -438,21 +454,49 @@
     var t = totals();
     var s = Store.settings();
 
+    var changeNote = U.el('div', { class: 'settle__change' });
+
+    function refreshChange() {
+      var mode = form.inputs.paymentMode.value;
+      var got = U.num(form.inputs.tendered.value);
+      var out = changeNote;
+      if (mode === 'Due') {
+        var due = U.round2(Math.max(0, t.total - Math.min(got, t.total)));
+        out.textContent = due > 0
+          ? 'Udhaar (baaki): ₹' + U.money(due)
+          : 'Nothing outstanding — the bill is fully paid.';
+        out.className = 'settle__change' + (due > 0 ? ' is-due' : '');
+      } else {
+        var change = got - t.total;
+        out.textContent = change >= 0 ? 'Change to return: ₹' + U.money(change) : 'Short by ₹' + U.money(-change);
+        out.className = 'settle__change' + (change < 0 ? ' is-short' : '');
+      }
+    }
+
+    function applyMode() {
+      var due = form.inputs.paymentMode.value === 'Due';
+      form.show('customerName', due);
+      form.show('customerPhone', due);
+      form.label('tendered', due ? 'Received now (₹)' : 'Cash received');
+      if (due && !form.inputs.tenderedTouched) form.inputs.tendered.value = 0;
+      if (!due) form.inputs.tendered.value = Math.ceil(t.total);
+      refreshChange();
+    }
+
     var form = UI.form([
       { name: 'paymentMode', label: 'Payment mode', type: 'select', width: 'half', value: meta.paymentMode,
-        options: ['Cash', 'UPI', 'Card', 'Due'].map(function (x) { return { value: x, label: x }; }) },
+        options: ['Cash', 'UPI', 'Card', 'Due'].map(function (x) { return { value: x, label: x === 'Due' ? 'Due (Udhaar)' : x }; }) },
       { name: 'tendered', label: 'Cash received', type: 'number', width: 'half', min: 0, step: '1',
         value: Math.ceil(t.total), autofocus: true,
-        onInput: function (e) {
-          var change = U.num(e.target.value) - t.total;
-          var out = document.getElementById('change-due');
-          if (out) {
-            out.textContent = change >= 0 ? 'Change to return: ₹' + U.money(change) : 'Short by ₹' + U.money(-change);
-            out.className = 'settle__change' + (change < 0 ? ' is-short' : '');
-          }
-        } },
+        onInput: function () { form.inputs.tenderedTouched = true; refreshChange(); } },
+      { name: 'customerName', label: 'Customer name', type: 'text', width: 'half', required: true,
+        value: meta.customerName, placeholder: 'Who is taking the udhaar' },
+      { name: 'customerPhone', label: 'Phone number', type: 'tel', width: 'half',
+        value: meta.customerPhone, placeholder: '10-digit mobile' },
       { name: 'print', label: 'Print bill after saving', type: 'checkbox', value: true }
     ]);
+
+    form.inputs.paymentMode.addEventListener('change', applyMode);
 
     var body = U.el('div', {}, [
       U.el('div', { class: 'settle__total' }, [
@@ -460,14 +504,27 @@
         U.el('strong', { text: s.currency + U.money(t.total) })
       ]),
       form.node,
-      U.el('div', { id: 'change-due', class: 'settle__change', text: 'Change to return: ₹' + U.money(Math.ceil(t.total) - t.total) })
+      changeNote
     ]);
+
+    applyMode();
 
     UI.modal({
       title: 'Settle bill', body: body,
       actions: [
         { label: 'Cancel', value: false },
-        { label: 'Save & Finish', value: true, primary: true }
+        {
+          label: 'Save & Finish', primary: true,
+          onClick: function (close) {
+            if (form.inputs.paymentMode.value === 'Due' && !form.inputs.customerName.value.trim()) {
+              form.inputs.customerName.focus();
+              UI.err('A due bill needs the customer’s name.');
+              return false;
+            }
+            close(true);
+            return true;
+          }
+        }
       ]
     }).then(function (ok) {
       if (!ok) return;
@@ -481,10 +538,24 @@
       numberPromise.then(function (no) {
         var bill = buildBill('paid', no);
         bill.tendered = U.num(v.tendered);
+
+        if (v.paymentMode === 'Due') {
+          bill.customerName = v.customerName;
+          bill.customerPhone = v.customerPhone;
+          bill.customerId = Store.customerKey(v.customerName, v.customerPhone);
+          Store.markBillDue(bill, v.tendered);
+          bill.change = 0;
+          return Store.saveCustomer({ name: v.customerName, phone: v.customerPhone })
+            .then(function () { return Store.saveBill(bill); });
+        }
+
         bill.change = U.round2(Math.max(0, bill.tendered - bill.total));
+        bill.dueAmount = 0;
         return Store.saveBill(bill);
       }).then(function (bill) {
-        UI.ok('Bill ' + bill.billNo + ' saved — ' + Store.settings().currency + U.money(bill.total));
+        UI.ok(bill.dueAmount > 0
+          ? 'Bill ' + bill.billNo + ' — ₹' + U.money(bill.dueAmount) + ' udhaar on ' + bill.customerName
+          : 'Bill ' + bill.billNo + ' saved — ' + Store.settings().currency + U.money(bill.total));
         if (v.print) App.Receipt.print(bill, Store.settings());
         resetOrder();
         refreshHeld();
@@ -578,6 +649,20 @@
       ]),
 
       // ---- order side ----
+      // On a tablet the order panel drops below the menu, so a fixed bar keeps
+      // the running total and the settle button in reach at all times.
+      U.el('div', { class: 'pos__bar' }, [
+        U.el('button', {
+          type: 'button', class: 'pos__bar-open', onclick: toggleCart
+        }, [
+          U.el('span', { id: 'bar-count', class: 'pos__bar-count', text: '0 items' }),
+          U.el('span', { id: 'bar-total', class: 'pos__bar-total', text: '₹0.00' })
+        ]),
+        U.el('button', {
+          id: 'bar-settle', type: 'button', class: 'btn btn--primary btn--lg', onclick: settle
+        }, [U.el('span', { text: 'Settle' })])
+      ]),
+
       U.el('aside', { class: 'pos__cart card' }, [
         U.el('header', { class: 'cart__head' }, [
           U.el('div', {}, [
@@ -587,7 +672,13 @@
             ]),
             U.el('div', { id: 'order-meta', class: 'cart__meta' })
           ]),
-          U.el('div', { id: 'cart-ref', class: 'cart__ref', text: 'New order' })
+          U.el('div', { class: 'cart__head-right' }, [
+            U.el('div', { id: 'cart-ref', class: 'cart__ref', text: 'New order' }),
+            U.el('button', {
+              type: 'button', class: 'icon-btn cart__close', 'aria-label': 'Close order panel',
+              html: '&times;', onclick: closeCart
+            })
+          ])
         ]),
         U.el('div', { class: 'cart__tools' }, [
           UI.button('Details', orderOptions, 'btn--chip', '🧍'),
@@ -621,7 +712,10 @@
     refreshHeld();
 
     document.addEventListener('keydown', onKey);
-    return function teardown() { document.removeEventListener('keydown', onKey); };
+    return function teardown() {
+      document.removeEventListener('keydown', onKey);
+      closeCart();
+    };
   }
 
   App.Views = App.Views || {};

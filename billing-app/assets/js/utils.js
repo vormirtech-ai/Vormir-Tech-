@@ -193,7 +193,28 @@
     }, {});
   };
 
+  /*  True when the page is running inside the Android wrapper, which exposes
+   *  a small native bridge for printing and saving files — a WebView can do
+   *  neither on its own.
+   */
+  U.native = function () {
+    return typeof window.LaviNative !== 'undefined' ? window.LaviNative : null;
+  };
+
   U.download = function (filename, content, mime) {
+    var bridge = U.native();
+    if (bridge && bridge.saveFile) {
+      // The wrapper opens Android's own "save to…" picker.
+      var text = content instanceof Blob ? null : String(content);
+      if (text !== null) {
+        bridge.saveFile(filename, mime || 'text/plain', text);
+        return;
+      }
+    }
+    return U.downloadWeb(filename, content, mime);
+  };
+
+  U.downloadWeb = function (filename, content, mime) {
     var blob = content instanceof Blob ? content : new Blob([content], { type: mime || 'text/plain;charset=utf-8' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');

@@ -71,12 +71,39 @@
       })
       .then(function (emps) {
         state.employees = emps;
+        return Store.migrateAdvances();
+      })
+      .then(function () {
         if (!state.settings.seeded) {
           state.settings.seeded = true;
           return DB.put('settings', state.settings);
         }
       })
       .then(function () { return Store; });
+  };
+
+  /*  Earlier versions kept a single "advance" number on the employee.
+   *  It becomes one dated ledger entry so payroll has a single source of truth.
+   */
+  Store.migrateAdvances = function () {
+    var pending = state.employees.filter(function (e) {
+      return !e.advanceMigrated && U.num(e.advance) > 0;
+    });
+    if (!pending.length) return Promise.resolve();
+
+    return Promise.all(pending.map(function (emp) {
+      return Store.addStaffLedger({
+        empId: emp.id,
+        type: 'advance',
+        amount: U.num(emp.advance),
+        date: U.today(),
+        note: 'Opening advance'
+      }).then(function () {
+        emp.advance = 0;
+        emp.advanceMigrated = true;
+        return DB.put('employees', emp);
+      });
+    }));
   };
 
   /* --------------------------------------------------------- settings */
@@ -360,7 +387,7 @@
    *  Monthly staff are paid pro-rata on the calendar month; daily-wage staff on
    *  days actually worked. Overtime is paid at the day rate ÷ 8 per hour.
    */
-  Store.payrollFor = function (emp, rows, ym) {
+  Store.payrollFor = function (emp, rows, ym, ledger) {
     var counts = { present: 0, half: 0, absent: 0, leave: 0, paidleave: 0, off: 0 };
     var overtime = 0;
     rows.forEach(function (r) {
@@ -376,7 +403,22 @@
     var dayRate = emp.salaryType === 'daily' ? salary : (days ? U.round2(salary / days) : 0);
     var base = U.round2(dayRate * worked);
     var otPay = U.round2((dayRate / 8) * overtime);
-    var advance = U.num(emp.advance);
+    /*  Money the staff member took during the month. Advances and deductions
+     *  come off the salary, a bonus goes on top. `ledger` is the month's
+     *  staffledger rows; when it is not supplied the figures fall back to the
+     *  employee's own opening-advance field.
+     */
+    var advance = 0, bonus = 0, taken = [];
+    if (ledger) {
+      ledger.forEach(function (r) {
+        if (r.empId !== emp.id) return;
+        taken.push(r);
+        if (r.type === 'bonus') bonus = U.round2(bonus + U.num(r.amount));
+        else advance = U.round2(advance + U.num(r.amount));
+      });
+    } else {
+      advance = U.num(emp.advance);
+    }
 
     return {
       counts: counts,
@@ -386,8 +428,232 @@
       base: base,
       otPay: otPay,
       advance: advance,
-      payable: U.round2(base + otPay - advance)
+      bonus: bonus,
+      entries: taken.sort(function (a, b) { return a.date < b.date ? -1 : 1; }),
+      payable: U.round2(base + otPay + bonus - advance)
     };
+  };
+
+  /* ------------------------------------------------- staff money ledger */
+
+  /*  Every rupee a staff member takes from the counter — the daily ₹100-type
+   *  kharcha, an advance against wages, a bonus or a deduction.
+   */
+  Store.LEDGER_TYPES = {
+    advance:   { label: 'Kharcha / Advance', sign: -1, tone: 'amber' },
+    deduction: { label: 'Deduction',         sign: -1, tone: 'red' },
+    bonus:     { label: 'Bonus',             sign: 1,  tone: 'green' }
+  };
+
+  Store.staffLedgerForMonth = function (ym) {
+    return DB.equals('staffledger', 'month', ym).then(function (rows) {
+      return rows.sort(function (a, b) { return b.createdAt - a.createdAt; });
+    });
+  };
+
+  Store.staffLedgerBetween = function (from, to) {
+    return DB.range('staffledger', 'date', from, to).then(function (rows) {
+      return rows.sort(function (a, b) { return b.createdAt - a.createdAt; });
+    });
+  };
+
+  Store.addStaffLedger = function (entry) {
+    var emp = Store.employee(entry.empId);
+    if (!emp) return Promise.reject(new Error('Choose a staff member.'));
+    var amount = U.round2(U.num(entry.amount));
+    if (!(amount > 0)) return Promise.reject(new Error('Enter an amount greater than zero.'));
+
+    var row = {
+      id: entry.id || U.uid('sl'),
+      empId: emp.id,
+      empName: emp.name,
+      date: entry.date || U.today(),
+      month: (entry.date || U.today()).slice(0, 7),
+      type: Store.LEDGER_TYPES[entry.type] ? entry.type : 'advance',
+      amount: amount,
+      note: entry.note || '',
+      createdAt: entry.createdAt || Date.now()
+    };
+    return DB.put('staffledger', row).then(function () { return row; });
+  };
+
+  Store.removeStaffLedger = function (id) { return DB.del('staffledger', id); };
+
+  /* ------------------------------------------------------- shop expenses */
+
+  Store.EXPENSE_CATS = [
+    'Vegetables', 'Grocery', 'Meat & Fish', 'Dairy', 'Gas & Fuel', 'Electricity',
+    'Water', 'Rent', 'Staff Salary', 'Staff Advance', 'Repairs', 'Transport',
+    'Cleaning', 'Licence & Tax', 'Other'
+  ];
+
+  Store.expensesBetween = function (from, to) {
+    return DB.range('expenses', 'date', from, to).then(function (rows) {
+      return rows.sort(function (a, b) { return b.createdAt - a.createdAt; });
+    });
+  };
+
+  Store.saveExpense = function (exp) {
+    var amount = U.round2(U.num(exp.amount));
+    if (!(amount > 0)) return Promise.reject(new Error('Enter an amount greater than zero.'));
+
+    var emp = exp.paidBy ? Store.employee(exp.paidBy) : null;
+    var date = exp.date || U.today();
+    var row = {
+      id: exp.id || U.uid('exp'),
+      date: date,
+      month: date.slice(0, 7),
+      cat: exp.cat || 'Other',
+      amount: amount,
+      paidTo: exp.paidTo || '',
+      paidBy: emp ? emp.id : '',
+      paidByName: emp ? emp.name : (exp.paidByName || 'Owner'),
+      mode: exp.mode || 'Cash',
+      note: exp.note || '',
+      ref: exp.ref || '',
+      createdAt: exp.createdAt || Date.now()
+    };
+    return DB.put('expenses', row).then(function () { return row; });
+  };
+
+  Store.removeExpense = function (id) { return DB.del('expenses', id); };
+
+  Store.summariseExpenses = function (rows) {
+    var byCat = {}, byMode = {}, byDate = {};
+    rows.forEach(function (e) {
+      byCat[e.cat] = U.round2((byCat[e.cat] || 0) + e.amount);
+      byMode[e.mode] = U.round2((byMode[e.mode] || 0) + e.amount);
+      byDate[e.date] = U.round2((byDate[e.date] || 0) + e.amount);
+    });
+    return {
+      count: rows.length,
+      total: U.round2(U.sum(rows, function (e) { return e.amount; })),
+      byCat: byCat,
+      byMode: byMode,
+      byDate: byDate
+    };
+  };
+
+  /* ------------------------------------------- customers & udhaar (dues) */
+
+  // One customer per phone number; a customer with no phone is keyed by name.
+  Store.customerKey = function (name, phone) {
+    var p = String(phone || '').replace(/\D/g, '');
+    return p ? 'ph-' + p : 'nm-' + U.slug(name || 'walk-in');
+  };
+
+  Store.customers = function () { return DB.all('customers'); };
+  Store.customer = function (id) { return DB.get('customers', id); };
+
+  Store.saveCustomer = function (cust) {
+    var id = cust.id || Store.customerKey(cust.name, cust.phone);
+    return DB.get('customers', id).then(function (existing) {
+      var row = Object.assign({
+        id: id, name: '', phone: '', address: '', note: '', createdAt: Date.now()
+      }, existing || {}, {
+        name: cust.name || (existing && existing.name) || '',
+        phone: cust.phone || (existing && existing.phone) || '',
+        updatedAt: Date.now()
+      });
+      if (cust.address !== undefined) row.address = cust.address;
+      if (cust.note !== undefined) row.note = cust.note;
+      return DB.put('customers', row).then(function () { return row; });
+    });
+  };
+
+  Store.removeCustomer = function (id) { return DB.del('customers', id); };
+
+  // Bills still owing money, newest last so payments clear the oldest first.
+  Store.openDueBills = function () {
+    return DB.equals('bills', 'dueOpen', 1).then(function (rows) {
+      return rows.filter(function (b) { return U.num(b.dueAmount) > 0.004 && b.status !== 'cancelled'; })
+        .sort(function (a, b) { return a.createdAt - b.createdAt; });
+    });
+  };
+
+  /*  Groups outstanding bills by customer, which is what the Udhaar screen
+   *  and the "who owes us how much" question actually need.
+   */
+  Store.dueLedger = function () {
+    return Promise.all([Store.openDueBills(), Store.customers()]).then(function (r) {
+      var bills = r[0], custs = r[1];
+      var byId = {};
+      custs.forEach(function (c) { byId[c.id] = c; });
+
+      var groups = {};
+      bills.forEach(function (b) {
+        var key = b.customerId || Store.customerKey(b.customerName, b.customerPhone);
+        var g = groups[key] || (groups[key] = {
+          key: key,
+          name: (byId[key] && byId[key].name) || b.customerName || 'Walk-in',
+          phone: (byId[key] && byId[key].phone) || b.customerPhone || '',
+          address: (byId[key] && byId[key].address) || '',
+          note: (byId[key] && byId[key].note) || '',
+          bills: [], due: 0, billed: 0, oldest: b.date, newest: b.date
+        });
+        g.bills.push(b);
+        g.due = U.round2(g.due + U.num(b.dueAmount));
+        g.billed = U.round2(g.billed + U.num(b.total));
+        if (b.date < g.oldest) g.oldest = b.date;
+        if (b.date > g.newest) g.newest = b.date;
+      });
+
+      return Object.keys(groups).map(function (k) { return groups[k]; })
+        .sort(function (a, b) { return b.due - a.due; });
+    });
+  };
+
+  Store.markBillDue = function (bill, received) {
+    var paid = U.round2(Math.min(Math.max(0, U.num(received)), bill.total));
+    var due = U.round2(bill.total - paid);
+    bill.received = paid;
+    bill.dueAmount = due;
+    bill.payments = bill.payments || [];
+    if (paid > 0) {
+      bill.payments.push({ date: U.today(), amount: paid, mode: 'Cash', note: 'Paid at the counter' });
+    }
+    if (due > 0.004) bill.dueOpen = 1; else delete bill.dueOpen;
+    return bill;
+  };
+
+  /*  Settles a customer's outstanding bills oldest-first. Returns what was
+   *  applied so the screen can show a receipt of the payment.
+   */
+  Store.recordDuePayment = function (customerKey, amount, opts) {
+    opts = opts || {};
+    var left = U.round2(U.num(amount));
+    if (!(left > 0)) return Promise.reject(new Error('Enter an amount greater than zero.'));
+
+    return Store.openDueBills().then(function (bills) {
+      var mine = bills.filter(function (b) {
+        return (b.customerId || Store.customerKey(b.customerName, b.customerPhone)) === customerKey;
+      });
+      var owed = U.round2(U.sum(mine, function (b) { return U.num(b.dueAmount); }));
+      if (!mine.length) return Promise.reject(new Error('This customer has nothing outstanding.'));
+      if (left > owed + 0.004) return Promise.reject(new Error('That is more than the ₹' + U.money(owed) + ' outstanding.'));
+
+      var applied = [];
+      var writes = [];
+      mine.forEach(function (b) {
+        if (left <= 0.004) return;
+        var take = U.round2(Math.min(left, U.num(b.dueAmount)));
+        b.dueAmount = U.round2(U.num(b.dueAmount) - take);
+        b.received = U.round2(U.num(b.received) + take);
+        b.payments = b.payments || [];
+        b.payments.push({
+          date: opts.date || U.today(),
+          amount: take,
+          mode: opts.mode || 'Cash',
+          note: opts.note || ''
+        });
+        if (b.dueAmount <= 0.004) { b.dueAmount = 0; delete b.dueOpen; }
+        left = U.round2(left - take);
+        applied.push({ billNo: b.billNo, amount: take, cleared: b.dueAmount === 0 });
+        writes.push(Store.saveBill(b));
+      });
+
+      return Promise.all(writes).then(function () { return applied; });
+    });
   };
 
   /* --------------------------------------------------------- inventory */

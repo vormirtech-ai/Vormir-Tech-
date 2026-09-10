@@ -43,6 +43,11 @@
 
 * { box-sizing: border-box; }
 
+/*  A `display` rule on a component beats the browser's own [hidden] styling,
+ *  so state it once, loudly, for every element in the app.
+ */
+[hidden] { display: none !important; }
+
 html, body {
   height: 100%;
   margin: 0;
@@ -69,6 +74,7 @@ p:last-child { margin-bottom: 0; }
 .ta-center { text-align: center; }
 .ta-right  { text-align: right; }
 .is-low { color: var(--red); }
+.is-credit { color: var(--green); }
 
 #print-frame { position: fixed; width: 0; height: 0; border: 0; visibility: hidden; }
 
@@ -1034,6 +1040,67 @@ kbd {
   white-space: nowrap;
 }
 
+
+/* ------------------------------------------------- new-money widgets -- */
+
+.settle__change.is-due { color: var(--amber); }
+
+.amount-presets {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.amount-presets .btn { font-variant-numeric: tabular-nums; font-weight: 700; }
+
+.btn--money {
+  background: #fdf6e6;
+  border-color: #ecd7a4;
+  color: #8a5d10;
+  font-weight: 700;
+}
+.btn--money:hover { background: #fbefd4; border-color: #e0c383; }
+
+.quick-spend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.quick-spend__btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--red);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 14px 16px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color .13s, transform .06s;
+}
+.quick-spend__btn:hover { border-color: var(--red); }
+.quick-spend__btn:active { transform: translateY(1px); }
+.quick-spend__plus { font-size: 18px; color: var(--red); font-weight: 700; }
+
+.share__fill--spend { background: var(--red); }
+
+/* ------------------------------------------------- tablet order bar -- */
+
+/*  Hidden on a desktop, where the order panel is always on screen. On a
+ *  tablet it is the permanent handle on the running order.
+ */
+.pos__bar { display: none; }
+
+.cart__head-right { display: flex; align-items: flex-start; gap: 6px; }
+.cart__close { display: none; }
+
 /* -------------------------------------------------------------- modal -- */
 
 .modal-overlay {
@@ -1132,8 +1199,78 @@ kbd {
   .grid-2 { grid-template-columns: minmax(0, 1fr); }
   .pos { grid-template-columns: minmax(0, 1fr); }
   .pos__menu { max-height: none; }
-  .pos__cart { position: static; max-height: none; }
   .share__row { grid-template-columns: 100px 1fr 96px; }
+
+  /* The order becomes a bottom sheet, opened from the bar. */
+  .view { padding-bottom: 86px; }
+
+  .pos__bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 60;
+    padding: 10px 14px;
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -6px 22px rgba(16, 24, 40, .10);
+  }
+  .pos__bar-open {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    background: none;
+    border: 0;
+    font: inherit;
+    cursor: pointer;
+    text-align: left;
+    padding: 4px 0;
+  }
+  .pos__bar-count { font-size: 11.5px; color: var(--ink-3); font-weight: 600; }
+  .pos__bar-total { font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
+  .pos__bar .btn--lg { padding: 13px 26px; }
+
+  .pos__cart {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    z-index: 70;
+    margin: 0;
+    max-height: 82vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    box-shadow: var(--shadow-lg);
+    transform: translateY(102%);
+    transition: transform .24s ease;
+  }
+  body.is-cart-open .pos__cart { transform: none; }
+  body.is-cart-open .nav-scrim { display: block; opacity: 1; pointer-events: auto; z-index: 65; }
+  .cart__close { display: grid; }
+  .cart__body { max-height: 42vh; }
+}
+
+/* Fingers, not a mouse: everything tappable grows below tablet width. */
+@media (max-width: 1000px) {
+  .price-btn { min-width: 84px; padding: 11px 12px; font-size: 15px; }
+  .menu-table td { padding: 6px 8px; }
+  .menu-item__name { font-size: 15px; }
+  .btn { padding: 10px 16px; font-size: 14px; }
+  .btn--chip { padding: 8px 14px; font-size: 13px; }
+  .qty-btn { width: 38px; height: 34px; font-size: 18px; }
+  .qty-input { width: 46px; font-size: 15px; }
+  .input { padding: 11px 12px; font-size: 15px; }
+  .tab { padding: 10px 16px; font-size: 13.5px; }
+  .att-btn { min-width: 52px; padding: 11px 12px; font-size: 13px; }
+  .cell-btn { width: 32px; height: 30px; font-size: 11px; }
+  .link-btn { padding: 7px 8px; font-size: 13px; }
+  .nav__item { padding: 13px 12px; font-size: 14.5px; }
+  .table td, .table th { padding: 12px 14px; }
 }
 
 @media (max-width: 820px) {

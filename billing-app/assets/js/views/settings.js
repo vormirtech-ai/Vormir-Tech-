@@ -184,9 +184,11 @@
         UI.button('Download backup', backupNow, 'btn--primary', '⬇'),
         UI.button('Restore from backup', restore, 'btn--ghost', '⬆'),
         UI.button('Export everything as CSV', function () {
-          Promise.all([DB.all('bills'), DB.all('attendance'), DB.all('moves')]).then(function (r) {
+          Promise.all([DB.all('bills'), DB.all('attendance'), DB.all('moves'),
+                       DB.all('expenses'), DB.all('staffledger'), DB.all('customers')]).then(function (r) {
             var zipless = [
               ['bills', r[0]], ['attendance', r[1]], ['stock-moves', r[2]],
+              ['expenses', r[3]], ['staff-kharcha', r[4]], ['customers', r[5]],
               ['menu', Store.menu()], ['staff', Store.employees()], ['inventory', Store.inventory()]
             ];
             zipless.forEach(function (pair, idx) {

@@ -3,7 +3,7 @@
  *  the whole system opens with no network at all. Bump CACHE when files change:
  *  the old cache is then dropped on activate.
  */
-var CACHE = 'lavi-pos-v1';
+var CACHE = 'lavi-pos-v2';
 
 var ASSETS = [
   './',
@@ -18,6 +18,8 @@ var ASSETS = [
   './assets/js/receipt.js',
   './assets/js/views/pos.js',
   './assets/js/views/bills.js',
+  './assets/js/views/dues.js',
+  './assets/js/views/expenses.js',
   './assets/js/views/reports.js',
   './assets/js/views/menu.js',
   './assets/js/views/inventory.js',

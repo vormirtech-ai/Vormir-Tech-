@@ -7,11 +7,13 @@
   var NAV = [
     { id: 'pos',        label: 'Billing',    icon: '🧾', hint: 'Take an order' },
     { id: 'bills',      label: 'Bills',      icon: '📑', hint: 'Bill history' },
+    { id: 'dues',       label: 'Udhaar',     icon: '🤝', hint: 'Who owes us money' },
+    { id: 'expenses',   label: 'Expenses',   icon: '💸', hint: 'Shop kharcha' },
     { id: 'reports',    label: 'Reports',    icon: '📊', hint: 'Sales & summaries' },
     { id: 'menu',       label: 'Menu',       icon: '🍽️', hint: 'Items & prices' },
     { id: 'inventory',  label: 'Inventory',  icon: '📦', hint: 'Kitchen stock' },
     { id: 'attendance', label: 'Attendance', icon: '📅', hint: 'Staff attendance' },
-    { id: 'staff',      label: 'Staff',      icon: '👥', hint: 'Team & wages' },
+    { id: 'staff',      label: 'Staff',      icon: '👥', hint: 'Team, wages & kharcha' },
     { id: 'settings',   label: 'Settings',   icon: '⚙️', hint: 'Shop & backup' }
   ];
 
@@ -62,12 +64,20 @@
   function refreshTodayStat() {
     var node = document.getElementById('today-sales');
     if (!node) return;
-    Store.billsBetween(U.today(), U.today()).then(function (bills) {
-      var sum = Store.summarise(bills);
+    Promise.all([
+      Store.billsBetween(U.today(), U.today()),
+      Store.expensesBetween(U.today(), U.today()),
+      Store.openDueBills()
+    ]).then(function (r) {
+      var sum = Store.summarise(r[0]);
+      var spent = U.round2(U.sum(r[1], function (e) { return e.amount; }));
+      var due = U.round2(U.sum(r[2], function (b) { return U.num(b.dueAmount); }));
+      var cur = Store.settings().currency;
       node.innerHTML = '<span class="topstat__label">Today</span>' +
-        '<span class="topstat__value">' + Store.settings().currency + U.money(sum.net) + '</span>' +
-        '<span class="topstat__sub">' + sum.bills + ' bills</span>';
-    });
+        '<span class="topstat__value">' + cur + U.money(sum.net) + '</span>' +
+        '<span class="topstat__sub">' + sum.bills + ' bills · kharcha ' + cur + U.moneyShort(spent) +
+        (due ? ' · udhaar ' + cur + U.moneyShort(due) : '') + '</span>';
+    }).catch(function () { /* the figure is a convenience, never a blocker */ });
   }
 
   function refreshBrand() {
@@ -154,7 +164,7 @@
     document.addEventListener('keydown', function (e) {
       if (!e.altKey || e.ctrlKey || e.metaKey) return;
       var n = parseInt(e.key, 10);
-      if (n >= 1 && n <= NAV.length) {
+      if (n >= 1 && n <= Math.min(9, NAV.length)) {
         e.preventDefault();
         Router.go(NAV[n - 1].id);
       }

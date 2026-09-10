@@ -9,17 +9,20 @@
   'use strict';
 
   var DB_NAME = 'lavi_dhaba_pos';
-  var DB_VERSION = 1;
+  var DB_VERSION = 2;
 
   var SCHEMA = {
     settings:   { key: 'id', indexes: [] },
     counters:   { key: 'id', indexes: [] },
     menu:       { key: 'id', indexes: ['cat'] },
-    bills:      { key: 'id', indexes: ['date', 'status', 'billNo'] },
+    bills:      { key: 'id', indexes: ['date', 'status', 'billNo', 'dueOpen'] },
     employees:  { key: 'id', indexes: [] },
     attendance: { key: 'id', indexes: ['date', 'empId', 'month'] },
     inventory:  { key: 'id', indexes: ['cat'] },
-    moves:      { key: 'id', indexes: ['date', 'itemId'] }
+    moves:      { key: 'id', indexes: ['date', 'itemId'] },
+    expenses:   { key: 'id', indexes: ['date', 'month', 'cat'] },
+    staffledger:{ key: 'id', indexes: ['date', 'month', 'empId'] },
+    customers:  { key: 'id', indexes: ['phone'] }
   };
 
   var STORES = Object.keys(SCHEMA);

@@ -1,0 +1,9 @@
+// Top-level build file. The app deliberately has no third-party dependencies:
+// the whole product is the web app in ../billing-app plus a WebView around it.
+plugins {
+    id 'com.android.application' version '8.5.2' apply false
+}
+
+tasks.register('clean', Delete) {
+    delete rootProject.layout.buildDirectory
+}

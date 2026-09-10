@@ -14,11 +14,13 @@ on.
 | --- | --- |
 | **Billing** | Take an order and print the bill. The three white-box sections of the menu card — **Rice, Roti & Papad, Paratha** — open first as **Quick Picks**. |
 | **Bills** | Every bill ever made: search, filter by date, view, reprint, cancel, export to CSV. |
-| **Reports** | Sales by hour or by day, top-selling items, category share, payment split, printable day summary. |
+| **Udhaar** | Who owes the dhaba money, since when, and taking payment against it. |
+| **Expenses** | Every rupee that leaves the counter — sabzi, gas, rent, repairs — and what is left after it. |
+| **Reports** | Sales, kharcha, profit, top items, category share, payment split, printable day summary. |
 | **Menu** | Add, edit, reprice or hide items; manage categories; print a fresh menu card. |
 | **Inventory** | Kitchen stock with purchases, usage, wastage, stock counts, low-stock alerts and a full movement ledger. |
 | **Attendance** | Mark the day, view the month sheet, calculate payroll and print salary slips. |
-| **Staff** | Team records — role, phone, wage basis, advances. |
+| **Staff** | Team records, wages, and the daily kharcha each person takes. |
 | **Settings** | Shop details, GST, printing, backup and restore. |
 
 The complete menu from the restaurant's card is already loaded — 72 items
@@ -32,6 +34,47 @@ across 10 categories, at the printed prices.
 * Discounts can be a flat rupee amount or a percentage.
 * An unfinished order survives an accidental refresh or power cut.
 * Bills print as an **80 mm thermal receipt** or an **A4 invoice**.
+
+### Udhaar (dues)
+
+Settle a bill with payment mode **Due (Udhaar)** and the app asks who is taking
+it. The name and phone are required — that is the whole point, so the amount can
+be chased later.
+
+* A part payment at the counter is fine: type what was received, the rest becomes
+  the udhaar.
+* The **Udhaar** screen lists every customer with an outstanding balance, how many
+  bills, and how long it has been owing. Anything over 30 days is flagged.
+* **Receive ₹** takes a payment and clears the **oldest bill first**, exactly the
+  way a paper khata is settled. Part payments are allowed; paying more than is
+  owed is refused.
+* **Print Khata** produces the list to carry around while collecting.
+
+### Expenses (kharcha)
+
+Everything the dhaba spends. Four one-tap buttons cover the daily ones —
+Vegetables, Grocery, Meat & Fish, Gas & Fuel — and **Add Expense** covers the
+rest with a vendor, a payment mode and who spent it.
+
+* The screen shows **sales − kharcha** for the period, so the day's real position
+  is on one line.
+* Buying stock on the **Inventory** screen offers to record the purchase here too,
+  so the profit figure stays honest without double entry.
+* Reports carry the same figures, and the printed day summary now shows the
+  expense side and the profit.
+
+### Staff kharcha
+
+When a waiter takes ₹100 at noon, tap **Paisa diya** on the **Staff** screen — or
+on the staff member's row in **Attendance**, which is usually closer to hand.
+Preset buttons cover ₹50 / ₹100 / ₹200 / ₹500 / ₹1000.
+
+* Each entry is dated and can carry a note ("doctor", "ghar bhejna").
+* **Khata** shows the month's entries for one person, and any entry can be deleted.
+* **Payroll** subtracts the month's total automatically — there is nothing to
+  remember at month end. A **Bonus** entry adds instead of subtracts.
+* The payslip prints the individual entries, so there is no argument about what
+  was taken.
 
 ---
 
@@ -70,10 +113,18 @@ because a service worker keeps a copy of the app on the device.
 Netlify, Vercel, cPanel, a shared-hosting `public_html` folder, a USB stick —
 upload the files as they are. There is no build step.
 
+### Option D — as an Android app on the tablet
+
+There is a real Android app in `android/` that wraps this exact web app. See
+`android/README.md` for how to get the APK. It runs offline, has no internet
+permission at all, prints through Android's print service and saves backups
+through the system file picker.
+
 ### Install it like an app
 
 In Chrome or Edge, open the menu and choose **Install** (or *Add to Home
-Screen* on a tablet). It then opens in its own window with no address bar.
+Screen* on a tablet). It then opens in its own window with no address bar —
+this works today, without the APK.
 
 ---
 
@@ -103,7 +154,12 @@ That same file is how you move the system to a new computer.
 **Every day**
 1. **Attendance → All Present**, then correct anyone who is absent.
 2. Bill through the day on the **Billing** screen.
-3. At closing: **Reports → Today → Print Summary** to tally the cash box.
+3. Record kharcha as it happens — shop spending on **Expenses**, staff money with
+   **Paisa diya**.
+4. At closing: **Reports → Today → Print Summary** to tally the cash box.
+
+**Every week**
+* **Udhaar** — chase anything over a couple of weeks old, and record what comes in.
 
 **Every week**
 1. **Inventory → + Stock** as goods come in; **Use** and **Waste** as they go out.
@@ -144,6 +200,8 @@ assets/
     receipt.js             80 mm and A4 bill layouts
     app.js                 navigation and boot
     views/                 one file per screen
+                           pos, bills, dues, expenses, reports,
+                           menu, inventory, attendance, staff, settings
   icons/                   app icons
 ```
 

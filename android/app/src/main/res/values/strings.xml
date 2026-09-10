@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Lavi Billing</string>
+    <string name="exit_hint">Press back again to close the app</string>
+    <string name="saved">Saved to the chosen folder</string>
+    <string name="save_failed">Could not save the file</string>
+    <string name="no_saver">No app on this tablet can save files</string>
+</resources>

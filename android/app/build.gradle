@@ -1,0 +1,90 @@
+plugins {
+    id 'com.android.application'
+}
+
+/*  The web app is the single source of truth. It is copied into the APK's
+ *  assets at build time, so there is never a second, drifting copy of the
+ *  billing system checked into the repository.
+ */
+def webAppSource = file("$rootDir/../billing-app")
+def generatedAssets = layout.buildDirectory.dir("generated/webapp")
+
+tasks.register('syncWebApp', Copy) {
+    description = 'Copies billing-app/ into the APK assets as www/.'
+    from(webAppSource) {
+        exclude 'README.md'
+        // The service worker is pointless inside an APK — the files are already local.
+        exclude 'sw.js'
+    }
+    into generatedAssets.map { it.dir('www') }
+}
+
+// Whichever variant is being assembled, the assets must be synced first.
+tasks.configureEach { task ->
+    if (task.name.startsWith('merge') && task.name.endsWith('Assets')) {
+        task.dependsOn('syncWebApp')
+    }
+    if (task.name == 'preBuild') {
+        task.dependsOn('syncWebApp')
+    }
+}
+
+android {
+    namespace 'com.lavidhawa.pos'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.lavidhawa.pos"
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+    }
+
+    sourceSets {
+        main {
+            assets.srcDirs += generatedAssets
+        }
+    }
+
+    /*  Signed with a real key when the CI secrets are present, and with the
+     *  standard debug key otherwise, so a build always produces something
+     *  that installs on a tablet.
+     */
+    signingConfigs {
+        release {
+            def storePath = System.getenv('KEYSTORE_FILE')
+            if (storePath && file(storePath).exists()) {
+                storeFile file(storePath)
+                storePassword System.getenv('KEYSTORE_PASSWORD')
+                keyAlias System.getenv('KEY_ALIAS')
+                keyPassword System.getenv('KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            def storePath = System.getenv('KEYSTORE_FILE')
+            signingConfig = (storePath && file(storePath).exists())
+                ? signingConfigs.release
+                : signingConfigs.debug
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            applicationIdSuffix '.debug'
+            versionNameSuffix '-debug'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+    }
+}

@@ -38,7 +38,8 @@ assets/
 robots.txt, sitemap.xml, .nojekyll
 
 billing-app/            offline billing system for Lavi The Dhawa (see its own README)
-android/                Android app wrapping billing-app (see its own README)
+android/                native Android app wrapping billing-app (see its own README)
+flutter_app/            Flutter edition of the same app (see its own README)
 dist/                   ready-to-host zip of billing-app/
 ```
 
@@ -53,6 +54,10 @@ build step and no internet connection. See `billing-app/README.md`.
 `android/` wraps the same web app as an Android APK for tablet use. GitHub
 Actions builds and signs it (**Actions → Build Android APK**); see
 `android/README.md`.
+
+`flutter_app/` is a Flutter build of the same app (**Actions → Build Flutter
+APK**). It is functionally identical to `android/` but larger; install one or
+the other, not both. See `flutter_app/README.md`.
 
 ## Editing the content
 

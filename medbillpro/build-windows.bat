@@ -11,6 +11,10 @@ echo  MedV - building the Windows installer
 echo  -------------------------------------
 echo.
 
+REM Clear the "downloaded from the internet" mark on this folder, so Windows
+REM does not block the files we are about to use. Harmless if already clear.
+powershell -NoProfile -Command "Get-ChildItem -Recurse -File | Unblock-File" >nul 2>nul
+
 where node >nul 2>nul
 if errorlevel 1 (
   echo  Node.js was not found.
@@ -45,7 +49,11 @@ exit /b 0
 :failed
 echo.
 echo  The build failed. Scroll up for the first red error line.
-echo  Most common cause: no internet during "npm install".
+echo  Most common causes:
+echo    - no internet during "npm install"
+echo    - Windows blocked a file  ^(see docs\WINDOWS-SECURITY.md^)
+echo    - the SQLite driver needed to compile and Visual Studio Build Tools
+echo      are not installed  ^(see docs\INSTALL-WINDOWS.md^)
 echo.
 pause
 exit /b 1

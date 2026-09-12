@@ -26,6 +26,19 @@ win:
   icon: build/icon.ico
   artifactName: MedBillPro_Setup.${ext}
 
+# Code signing (optional but recommended — it removes the SmartScreen warning
+# and the Smart App Control block on shop PCs). No change is needed here:
+# export the two variables below and electron-builder signs the app and the
+# installer automatically.
+#
+#   set CSC_LINK=C:\path\to\certificate.pfx
+#   set CSC_KEY_PASSWORD=your-certificate-password
+#   npm run dist
+#
+# For Azure Trusted Signing (~$10/month, trusted by Smart App Control straight
+# away) upgrade to electron-builder 26+ and add an `azureSignOptions:` block.
+# See docs/WINDOWS-SECURITY.md.
+
 nsis:
   oneClick: false
   perMachine: false

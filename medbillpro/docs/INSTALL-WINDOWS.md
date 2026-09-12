@@ -4,12 +4,21 @@ Two situations. Pick yours.
 
 ---
 
+> **Before anything else:** if you received this as a zip, right-click it →
+> **Properties** → tick **Unblock** → OK, and *then* extract it. Windows marks
+> every file inside a downloaded zip as untrusted, and Smart App Control will
+> refuse to run them. See [WINDOWS-SECURITY.md](WINDOWS-SECURITY.md).
+
 ## A. You already have `MedBillPro_Setup.exe`
 
-1. Double-click **MedBillPro_Setup.exe**.
-2. Windows may show *"Windows protected your PC"* because the installer is not
-   code-signed. Click **More info → Run anyway**. (Signing is a paid certificate;
-   ask Vormir Tech if you want the installer signed.)
+1. Right-click **MedBillPro_Setup.exe** → Properties → tick **Unblock** → OK.
+2. Double-click it.
+3. Windows may show *"Windows protected your PC"* because the installer is not
+   code-signed. Click **More info → Run anyway**.
+   If instead you get *"Smart App Control blocked a file that may be unsafe"*,
+   there is no Run-anyway button — read
+   [WINDOWS-SECURITY.md](WINDOWS-SECURITY.md) §1, which covers your options
+   (signing, USB + Unblock, portable build, or turning SAC off).
 3. Choose the folder — the default `C:\Users\<you>\AppData\Local\Programs\MedV`
    installs for the current user and needs no administrator rights.
 4. Finish. **MedV** is on the desktop and in the Start menu.
@@ -31,7 +40,18 @@ that never go online.
 
 1. Install **Node.js LTS** from <https://nodejs.org> (accept the defaults).
 2. Unzip this folder somewhere simple, e.g. `C:\medv`.
-3. Open the folder and double-click **`build-windows.bat`**.
+3. Open that folder in Explorer, click the address bar, type `cmd`, press Enter,
+   and run:
+
+   ```bat
+   npm install
+   npm run dist
+   ```
+
+   (`build-windows.bat` runs exactly these two commands if you prefer to
+   double-click. Smart App Control blocks `.bat` files that came from a
+   downloaded zip, so if it refuses, type the commands instead — typed commands
+   are never blocked.)
 4. Wait — the first run downloads Electron (~100 MB) and compiles the SQLite
    driver. Five to fifteen minutes is normal.
 5. When it finishes you will have:
@@ -42,14 +62,6 @@ dist\MedBillPro_Portable.exe    a single-file portable build
 ```
 
 6. Copy the installer to each shop computer and follow section A.
-
-If you prefer the command line:
-
-```bat
-cd C:\medv
-npm install
-npm run dist
-```
 
 ---
 
@@ -96,4 +108,6 @@ data.
 | `npm install` fails with network errors | You are offline or behind a proxy. The build step needs internet; the finished app does not. |
 | `Cannot find module 'better-sqlite3'` | Run `npm install` again — its native driver did not finish preparing. |
 | `gyp ERR!` / `MSBuild.exe failed` | The SQLite driver had to compile from source and Windows has no C++ toolchain. Install **Visual Studio Build Tools** with the *Desktop development with C++* workload, then run `npm install` again. This only affects the build machine. |
-| Antivirus blocks the packaged exe | Unsigned installers are a common false positive. Whitelist the folder, or have the installer code-signed. |
+| Antivirus blocks the packaged exe | Unsigned installers are a common false positive. Whitelist the folder, or have the installer code-signed — see [WINDOWS-SECURITY.md](WINDOWS-SECURITY.md). |
+| `Smart App Control blocked a file` | The file carries the "from the internet" mark, or is unsigned. See [WINDOWS-SECURITY.md](WINDOWS-SECURITY.md) §1. |
+| `... is not digitally signed` / SmartScreen warning | Expected on an unsigned build. Click **More info → Run anyway**, or sign the installer ([§3](WINDOWS-SECURITY.md)). |

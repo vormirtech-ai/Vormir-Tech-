@@ -43,8 +43,12 @@ installed **once**, on a machine with internet:
 ```bat
 cd medbillpro
 npm install
-build-windows.bat
+npm run dist
 ```
+
+(`build-windows.bat` does the same thing in one double-click — but Windows Smart
+App Control blocks `.bat` files extracted from a downloaded zip, so unblock the
+zip first or just type the two commands.)
 
 The installer appears in `dist\MedBillPro_Setup.exe` (plus a no-install
 `MedBillPro_Portable.exe`). Copy it to any number of shop computers — the build
@@ -53,6 +57,11 @@ machine needs internet, the shop computer never does.
 > `npm install` downloads Electron and compiles the SQLite driver. That is the
 > only step that needs a connection; after it, `npm start` and the installed
 > application run entirely offline.
+
+The installer is **not code-signed**, so Windows 11 will warn about it — or block
+it outright if Smart App Control is on. [`docs/WINDOWS-SECURITY.md`](docs/WINDOWS-SECURITY.md)
+explains every dialog, the one-command fix for each, and how to sign the build
+(Azure Trusted Signing is about $10/month) so the warnings stop for good.
 
 ---
 

@@ -33,13 +33,19 @@ npm run dist
 That is exactly what `build-windows.bat` does. The installer lands in
 `dist\MedBillPro_Setup.exe`.
 
-### Fix B — clear the internet mark, then extract
+### Fix B — clear the internet mark, then *extract properly*
 
 Do this **before** unzipping, and every extracted file comes out clean:
 
 1. Right-click `MedV_MedBillPro_v1.0.0.zip` → **Properties**.
 2. At the bottom of the *General* tab, tick **Unblock**.
-3. **OK**, then extract the zip as usual.
+3. **OK**, then right-click the zip → **Extract All…** → `C:\MedV`.
+
+Step 3 matters as much as step 2. Double-clicking a zip opens a *preview*
+window, not a folder. If you launch a file from that window, Windows copies only
+that one file into `AppData\Local\Temp\…zip.xxx\` and leaves the rest inside the
+archive — the build then fails with `Could not read package.json`, and anything it
+did produce would vanish when Windows cleans the temp folder.
 
 Already extracted? Clear the whole folder at once — right-click the folder,
 **Open in Terminal**, then:

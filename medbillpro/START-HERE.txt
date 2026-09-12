@@ -14,13 +14,21 @@ WHAT THIS IS
   No cloud. No server. No internet needed to use it.
 
 
-STEP 0 - UNBLOCK THE ZIP FIRST  (30 seconds, saves trouble)
-  Windows marks everything inside a downloaded zip as
-  "from the internet", and then refuses to run it.
+STEP 0 - UNBLOCK, THEN *EXTRACT*  (30 seconds, saves an hour)
 
-  Right-click MedV_MedBillPro_v1.0.0.zip -> Properties
-      -> tick "Unblock" at the bottom -> OK
-      -> THEN extract the zip.
+  a) Right-click MedV_MedBillPro_v1.0.0.zip -> Properties
+         -> tick "Unblock" at the bottom -> OK
+     Windows marks everything inside a downloaded zip as
+     "from the internet" and then refuses to run it.
+
+  b) Right-click the zip again -> "Extract All..."
+         -> extract to a short path such as   C:\MedV
+
+  DO NOT run anything from the window that opens when you
+  just double-click the zip. That window is a preview: if you
+  launch a file from it, Windows copies THAT ONE FILE into a
+  temporary folder and leaves the other 78 behind, so the
+  build fails with "Could not read package.json".
 
   Already extracted? Right-click the folder -> Open in
   Terminal -> run:   Get-ChildItem -Recurse | Unblock-File
@@ -31,8 +39,9 @@ HOW TO GET IT RUNNING (Windows)
      (needed only to build the installer - the finished
       application never uses the internet).
 
-  2. Open the MedV folder in Explorer, click the address
-     bar, type  cmd  and press Enter. Then run:
+  2. Open the EXTRACTED MedV folder (C:\MedV\MedV) in
+     Explorer, click the address bar, type  cmd  and press
+     Enter. Then run:
 
          npm install
          npm run dist

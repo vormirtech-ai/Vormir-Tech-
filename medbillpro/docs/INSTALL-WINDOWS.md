@@ -4,10 +4,19 @@ Two situations. Pick yours.
 
 ---
 
-> **Before anything else:** if you received this as a zip, right-click it →
-> **Properties** → tick **Unblock** → OK, and *then* extract it. Windows marks
-> every file inside a downloaded zip as untrusted, and Smart App Control will
-> refuse to run them. See [WINDOWS-SECURITY.md](WINDOWS-SECURITY.md).
+> **Before anything else — unblock, then extract.**
+>
+> 1. Right-click the zip → **Properties** → tick **Unblock** → OK.
+>    Windows marks every file inside a downloaded zip as untrusted, and Smart App
+>    Control refuses to run them. See [WINDOWS-SECURITY.md](WINDOWS-SECURITY.md).
+> 2. Right-click it again → **Extract All…** → extract to a short path such as
+>    `C:\MedV`.
+>
+> **Do not run anything from the window that appears when you double-click the
+> zip.** That is a preview, not a folder. Launching a file from it makes Windows
+> copy *only that file* to a temporary directory, leaving the other 78 behind —
+> which is why the build then stops with `Could not read package.json`, and why
+> anything it did produce would be deleted with the temp folder.
 
 ## A. You already have `MedBillPro_Setup.exe`
 
@@ -40,8 +49,8 @@ that never go online.
 
 1. Install **Node.js LTS** from <https://nodejs.org> (accept the defaults).
 2. Unzip this folder somewhere simple, e.g. `C:\medv`.
-3. Open that folder in Explorer, click the address bar, type `cmd`, press Enter,
-   and run:
+3. Open the **extracted** folder (`C:\MedV\MedV`) in Explorer, click the address
+   bar, type `cmd`, press Enter, and run:
 
    ```bat
    npm install
@@ -104,6 +113,7 @@ data.
 
 | Message | Fix |
 |---|---|
+| `Could not read package.json` (ENOENT) | You ran the build from inside the zip preview window, or from a `...\Temp\...zip` folder. Extract the zip properly (Extract All) and run it from there. |
 | `node is not recognised` | Node.js is not installed, or the Command Prompt was open before installing it. Close and reopen. |
 | `npm install` fails with network errors | You are offline or behind a proxy. The build step needs internet; the finished app does not. |
 | `Cannot find module 'better-sqlite3'` | Run `npm install` again — its native driver did not finish preparing. |

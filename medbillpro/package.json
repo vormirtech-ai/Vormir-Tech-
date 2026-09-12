@@ -1,0 +1,48 @@
+{
+  "name": "medbillpro",
+  "productName": "MedV",
+  "version": "1.0.0",
+  "description": "MedV — offline-first pharmacy & medical store management (billing, inventory, GST) for Windows. All data is stored locally in SQLite.",
+  "author": {
+    "name": "Vormir Tech Solutions",
+    "email": "vormirtech@gmail.com"
+  },
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "dev:web": "node tools/devserver.js",
+    "test": "node --test",
+    "postinstall": "electron-builder install-app-deps",
+    "dist": "electron-builder --win --publish never",
+    "dist:portable": "electron-builder --win portable --publish never",
+    "pack": "electron-builder --dir"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.5.0"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vormirtech-ai/Vormir-Tech-.git"
+  },
+  "homepage": "https://github.com/vormirtech-ai/Vormir-Tech-/tree/main/medbillpro",
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "pharmacy",
+    "medical-store",
+    "billing",
+    "gst",
+    "inventory",
+    "offline",
+    "sqlite",
+    "electron"
+  ]
+}

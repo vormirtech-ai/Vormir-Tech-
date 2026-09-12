@@ -1,0 +1,59 @@
+/* Invoice/report print layout. The same markup is reused for Save-as-PDF. */
+.doc {
+  font-family: var(--font);
+  color: #111;
+  background: #fff;
+  width: 100%;
+}
+.doc * { box-sizing: border-box; }
+.doc-head { display: flex; justify-content: space-between; gap: 16px; border-bottom: 2px solid #111; padding-bottom: 8px; }
+.doc-head .store-name { font-size: 18px; font-weight: 700; letter-spacing: -.01em; }
+.doc-head .store-meta { font-size: 10.5px; line-height: 1.45; color: #333; }
+.doc-head .doc-type { text-align: right; font-size: 10.5px; }
+.doc-head .doc-type b { display: block; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; }
+.doc-parties { display: flex; justify-content: space-between; gap: 16px; font-size: 10.5px; padding: 7px 0; border-bottom: 1px dashed #999; }
+.doc-parties b { font-size: 11px; }
+table.doc-items { width: 100%; border-collapse: collapse; font-size: 10.5px; margin-top: 7px; }
+table.doc-items th { text-align: left; border-bottom: 1px solid #111; padding: 4px 3px; font-size: 9.5px; text-transform: uppercase; letter-spacing: .03em; }
+table.doc-items td { padding: 3.5px 3px; border-bottom: 1px dotted #ccc; vertical-align: top; }
+table.doc-items td.num, table.doc-items th.num { text-align: right; }
+.doc-summary { display: flex; justify-content: space-between; gap: 16px; margin-top: 8px; font-size: 10.5px; }
+.doc-summary table { border-collapse: collapse; min-width: 190px; }
+.doc-summary td { padding: 2.5px 4px; }
+.doc-summary td.num { text-align: right; }
+.doc-summary tr.grand td { font-size: 13px; font-weight: 700; border-top: 1.5px solid #111; padding-top: 5px; }
+.doc-gst { border-collapse: collapse; font-size: 9.5px; }
+.doc-gst th, .doc-gst td { border: 1px solid #777; padding: 2px 5px; }
+.doc-words { font-size: 10px; margin-top: 6px; font-style: italic; }
+.doc-foot { margin-top: 10px; display: flex; justify-content: space-between; gap: 16px; font-size: 9.5px; color: #333; }
+.doc-foot .sign { text-align: right; }
+.doc-foot .sign .line { margin-top: 26px; border-top: 1px solid #111; padding-top: 2px; }
+.doc-note { text-align: center; font-size: 9.5px; margin-top: 8px; padding-top: 5px; border-top: 1px dashed #999; }
+
+/* 80 mm thermal roll */
+.doc.thermal { width: 72mm; font-size: 10px; }
+.doc.thermal .doc-head { flex-direction: column; text-align: center; border-bottom: 1px dashed #111; }
+.doc.thermal .doc-head .doc-type { text-align: center; }
+.doc.thermal .doc-parties { flex-direction: column; gap: 2px; }
+.doc.thermal table.doc-items { font-size: 9.5px; }
+.doc.thermal .doc-summary { flex-direction: column; }
+.doc.thermal .doc-summary table { width: 100%; min-width: 0; }
+.doc.thermal .doc-gst { display: none; }
+.doc.thermal .doc-foot .sign { display: none; }
+
+.doc.a5 { width: 148mm; padding: 6mm; }
+.doc.a4 { width: 210mm; padding: 10mm; }
+.doc.a4 table.doc-items { font-size: 11px; }
+
+@media print {
+  body { overflow: visible !important; background: #fff !important; }
+  .shell, .overlay, .toasts { display: none !important; }
+  #print-area { display: block !important; }
+  .doc { box-shadow: none; }
+  @page { margin: 8mm; }
+}
+html.print-thermal { --print-page: 80mm auto; }
+@media print {
+  html.print-thermal { }
+  html.print-a4 { }
+}

@@ -3,6 +3,13 @@
 A static, dependency-free marketing site for Vormir Tech Solutions (Nagpur, India).
 Nothing to build and nothing to install — it is plain HTML, CSS and JavaScript.
 
+## Products in this repository
+
+| Folder | What it is |
+|---|---|
+| `/` (this folder) | The Vormir Tech Solutions marketing site — static HTML/CSS/JS for GitHub Pages. |
+| `medbillpro/` | **MedV** — an offline, local-first pharmacy management desktop app (Electron + SQLite) for Windows. See [`medbillpro/README.md`](medbillpro/README.md) and [`medbillpro/docs/INSTALL-WINDOWS.md`](medbillpro/docs/INSTALL-WINDOWS.md). It is a separate application and is not part of the website build. |
+
 ## Hosting it on GitHub Pages
 
 1. Create a repository (for a root domain use `<username>.github.io`, otherwise any name works).

@@ -1,0 +1,52 @@
+appId: com.vormirtech.medbillpro
+productName: MedV
+copyright: Copyright © 2026 Vormir Tech Solutions
+
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - src/**/*
+  - package.json
+  - '!**/*.map'
+  - '!tools/**'
+  - '!tests/**'
+  - '!docs/**'
+
+asarUnpack:
+  - '**/node_modules/better-sqlite3/**'
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+  icon: build/icon.ico
+  artifactName: MedBillPro_Setup.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: MedV
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  artifactName: MedBillPro_Setup.${ext}
+  deleteAppDataOnUninstall: false
+
+portable:
+  artifactName: MedBillPro_Portable.${ext}
+
+linux:
+  target: [AppImage]
+  icon: build/icon.png
+  category: Office
+
+mac:
+  target: [dmg]
+  icon: build/icon.png
+  category: public.app-category.business

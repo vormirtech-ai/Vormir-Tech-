@@ -1,0 +1,55 @@
+==========================================================
+  MedV - Pharmacy Management for Windows
+  by Vormir Tech Solutions, Nagpur
+==========================================================
+
+WHAT THIS IS
+  A complete medical-store application: counter billing,
+  batch/expiry inventory, purchase entry with Excel import,
+  GST returns, patient & supplier ledgers, refill reminders,
+  reports and local backup.
+
+  All data is stored in ONE SQLite file on this computer:
+      %APPDATA%\MedBillPro\data\medbill.db
+  No cloud. No server. No internet needed to use it.
+
+
+HOW TO GET IT RUNNING (Windows)
+  1. Install Node.js LTS once, from https://nodejs.org
+     (needed only to build the installer - the finished
+      application never uses the internet).
+
+  2. Double-click            build-windows.bat
+
+  3. When it finishes you will have:
+         dist\MedBillPro_Setup.exe      <- the installer
+         dist\MedBillPro_Portable.exe   <- no-install version
+
+  4. Run MedBillPro_Setup.exe on the shop computer,
+     then start MedV from the desktop icon and complete
+     the 3-step setup wizard.
+
+  Prefer to try it first without building?
+         npm install
+         npm start
+
+
+FIRST LOGIN
+  Username: admin
+  Password: the one you choose in the setup wizard
+            (the temporary default admin123 is replaced there)
+
+
+DOCUMENTATION
+  README.md                  overview, features, architecture
+  docs\INSTALL-WINDOWS.md    installing / building / moving PCs
+  docs\USER-GUIDE.md         day-to-day counter guide + shortcuts
+
+
+THE ONE HABIT THAT MATTERS
+  Backup -> "Backup to..." onto a pen drive at the end of
+  every day. Your data lives on this computer only.
+
+
+SUPPORT
+  vormirtech@gmail.com

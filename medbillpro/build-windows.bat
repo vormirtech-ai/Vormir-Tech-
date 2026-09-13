@@ -38,12 +38,27 @@ echo.
 rem Clear the "downloaded from the internet" mark. Harmless if already clear.
 powershell -NoProfile -Command "Get-ChildItem -Recurse -File | Unblock-File" >nul 2>nul
 
+rem ----------------------------------------------------------------
+rem  Check for the build tool itself, not just for a node_modules
+rem  folder - a half-finished install leaves the folder behind.
+rem  --include=dev defeats a global NODE_ENV=production, which would
+rem  otherwise skip electron-builder without saying so.
+rem ----------------------------------------------------------------
+if exist "node_modules\.bin\electron-builder.cmd" goto have_deps
+
 echo   [1/2] Installing build dependencies.
 echo         This needs internet and takes 5-15 minutes the first time.
 echo.
-call npm install || goto npm_failed
-
+call npm install --include=dev || goto npm_failed
 echo.
+if not exist "node_modules\.bin\electron-builder.cmd" goto no_builder
+goto packaging
+
+:have_deps
+echo   [1/2] Build dependencies already present.
+echo.
+
+:packaging
 echo   [2/2] Packaging the installer.
 echo.
 call npm run dist || goto npm_failed
@@ -145,6 +160,38 @@ echo      * Windows or antivirus blocked a file
 echo        (see docs\WINDOWS-SECURITY.md).
 echo.
 echo    Folder: %cd%
+echo.
+pause
+exit /b 1
+
+rem ================================================================
+:no_builder
+echo  ----------------------------------------------------------
+echo    "npm install" finished but electron-builder is missing.
+echo  ----------------------------------------------------------
+echo.
+echo    The dependency tree is incomplete - almost always an
+echo    "npm install" that was interrupted part-way (dropped
+echo    connection, closed window, antivirus).
+echo.
+echo    Fix it with a clean install - run these four lines in a
+echo    Command Prompt in this folder:
+echo.
+echo        rmdir /s /q node_modules
+echo        del package-lock.json
+echo        npm cache clean --force
+echo        npm install --include=dev
+echo.
+echo    Then run build-windows.bat again.
+echo.
+echo    Still missing afterwards? Something is telling npm to skip
+echo    devDependencies. Check:
+echo.
+echo        npm config get omit
+echo        npm config get production
+echo.
+echo    If either says "dev", "true" or "production", clear it with
+echo    npm config delete omit   /   npm config delete production
 echo.
 pause
 exit /b 1

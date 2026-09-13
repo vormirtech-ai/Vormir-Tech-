@@ -113,6 +113,7 @@ data.
 
 | Message | Fix |
 |---|---|
+| `'electron-builder' is not recognized` | The dependency tree is incomplete, almost always an `npm install` that was interrupted part-way. Run `npm install --include=dev` and then `npm run dist`. If it persists, do a clean install: `rmdir /s /q node_modules`, `del package-lock.json`, `npm cache clean --force`, `npm install --include=dev`. |
 | `Could not read package.json` (ENOENT) | You ran the build from inside the zip preview window, or from a `...\Temp\...zip` folder. Extract the zip properly (Extract All) and run it from there. |
 | `node is not recognised` | Node.js is not installed, or the Command Prompt was open before installing it. Close and reopen. |
 | `npm install` fails with network errors | You are offline or behind a proxy. The build step needs internet; the finished app does not. |

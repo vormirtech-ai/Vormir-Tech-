@@ -110,7 +110,8 @@ export async function render() {
       el('div.grid.cols-3.mb-16',
         stat({
           label: 'Database size', value: `${(status.dbSize / 1048576).toFixed(2)} MB`,
-          sub: 'Stored on this computer', iconName: 'save', accent: 'blue'
+          sub: isDesktop ? 'Stored on this computer' : 'In this browser, on this computer',
+          iconName: 'save', accent: 'blue'
         }),
         stat({
           label: 'Last backup',
@@ -119,7 +120,13 @@ export async function render() {
           iconName: 'backup',
           accent: status.overdue ? 'orange' : 'green'
         }),
-        stat({ label: 'Backup files kept', value: String(status.count), sub: 'In the app data folder', iconName: 'folder', accent: 'purple' })),
+        stat({
+          label: 'Backup files kept',
+          value: String(status.count),
+          sub: isDesktop ? 'In the app data folder' : 'Automatic copies, inside this browser',
+          iconName: 'folder',
+          accent: 'purple'
+        })),
       status.overdue
         ? el('div.note.warn.mb-16', icon('alert'), el('div',
           el('b', 'Take a backup today. '),

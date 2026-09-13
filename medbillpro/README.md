@@ -1,12 +1,28 @@
 # MedV — Pharmacy Management (offline, local-first)
 
-MedV is a Windows desktop application for medical stores and pharmacies: counter
-billing, batch-wise inventory with expiry tracking, purchase entry with Excel
-import, GST returns, patient/doctor/supplier ledgers, refill reminders and
-local backup — **all of it working with the internet unplugged.**
+MedV is an application for medical stores and pharmacies: counter billing,
+batch-wise inventory with expiry tracking, purchase entry with Excel import, GST
+returns, patient/doctor/supplier ledgers, refill reminders and local backup —
+**all of it working with the internet unplugged.**
 
-Every byte of business data lives in one SQLite file on the shop's own computer.
-There is no cloud account, no server to rent and no sync service.
+Every byte of business data lives in one SQLite database on the shop's own
+computer. There is no cloud account, no server to rent and no sync service.
+
+## Two editions, one codebase
+
+| | **Web edition** — nothing to install | **Desktop edition** — Windows app |
+|---|---|---|
+| Getting it | open the link | run `MedBillPro_Setup.exe` |
+| Where data sits | this browser's storage, on this PC | `%APPDATA%\MedBillPro\data\medbill.db` |
+| Offline | yes, after the first visit | yes, always |
+| Backup file | `.db` download | `.db` written wherever you choose |
+| Best for | starting today, or a second machine | the main counter PC |
+
+Backups are interchangeable: a file from one edition restores into the other.
+Start on the web now; move to the desktop build whenever you feel like it.
+
+**Web edition:** `https://vormirtech-ai.github.io/Vormir-Tech-/medv/` —
+see [`docs/WEB-HOSTING.md`](docs/WEB-HOSTING.md) to switch it on.
 
 ```
 %APPDATA%\MedBillPro\data\medbill.db      ← your database (Windows)
@@ -33,7 +49,7 @@ There is no cloud account, no server to rent and no sync service.
 
 ---
 
-## 2. Install on a Windows PC (for the shop)
+## 2. Install on a Windows PC (desktop edition)
 
 If you were given **`MedBillPro_Setup.exe`**, just run it and skip to §4.
 
@@ -70,8 +86,10 @@ explains every dialog, the one-command fix for each, and how to sign the build
 ```bash
 npm install       # once
 npm start         # launch the desktop app
-npm test          # 25 logic tests, including the full offline acceptance scenario
-npm run dev:web   # optional: same UI in a browser on 127.0.0.1 for quick iteration
+npm test          # 31 tests: business logic, the offline acceptance scenario,
+                  #   the spreadsheet reader, portable hashing, the browser data layer
+npm run build:web # regenerate the hosted web edition into ../medv
+npm run dev:web   # same interface in a browser against the Node services
 ```
 
 `npm run dev:web` is a development harness only (`tools/devserver.js`); it is
@@ -129,6 +147,9 @@ src/
     css/                design tokens, app styles, print styles
 tests/                  node:test suites for the core and the spreadsheet reader
 tools/devserver.js      offline browser harness for development (not packaged)
+tools/build-web.js      generates the hosted web edition into /medv
+vendor/                 sql.js — SQLite compiled to WebAssembly, for the web edition
+web/                    the web edition's page shell, service worker and manifest
 ```
 
 Two deliberate choices worth knowing:

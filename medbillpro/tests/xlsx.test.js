@@ -57,20 +57,20 @@ const sheet = `<?xml version="1.0"?><worksheet><sheetData>
   <row r="3"><c r="A3" t="s"><v>4</v></c><c r="B3" t="s"><v>6</v></c><c r="C3"><v>30</v></c></row>
 </sheetData></worksheet>`;
 
-test('reads a real xlsx workbook without any third-party library', () => {
+test('reads a real xlsx workbook without any third-party library', async () => {
   const buffer = makeXlsx({
     '[Content_Types].xml': '<?xml version="1.0"?><Types/>',
     'xl/sharedStrings.xml': sst,
     'xl/worksheets/sheet1.xml': sheet
   });
-  const rows = readWorkbook(buffer);
+  const rows = await readWorkbook(buffer);
   assert.deepEqual(rows[0], ['Product Name', 'Batch No', 'Qty']);
   assert.deepEqual(rows[1], ['Paracetamol 500mg', 'PCM777', '50']);
   assert.equal(rows[2][0], 'Azithro & Co');
 });
 
-test('rejects a file that is not a workbook', () => {
-  assert.throws(() => readWorkbook(Buffer.from('hello world')), /not a valid .xlsx/);
+test('rejects a file that is not a workbook', async () => {
+  await assert.rejects(() => readWorkbook(Buffer.from('hello world')), /not a valid .xlsx/);
 });
 
 test('csv reader handles quotes, semicolons and blank lines', () => {

@@ -18,7 +18,8 @@
     "postinstall": "electron-builder install-app-deps",
     "dist": "electron-builder --win --publish never",
     "dist:portable": "electron-builder --win portable --publish never",
-    "pack": "electron-builder --dir"
+    "pack": "electron-builder --dir",
+    "build:web": "node tools/build-web.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.5.0"

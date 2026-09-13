@@ -1,6 +1,5 @@
 'use strict';
 
-const crypto = require('crypto');
 const db = require('../db');
 const audit = require('./audit');
 const { assert, fail } = require('../util/errors');
@@ -9,17 +8,12 @@ const { nowStamp } = require('../util/dates');
 
 const ROLES = ['admin', 'pharmacist', 'cashier'];
 
-/** scrypt keeps password hashing local — no native module, no network. */
-function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
-  const hash = crypto.scryptSync(String(password), salt, 64, { N: 16384, r: 8, p: 1 }).toString('hex');
-  return { hash, salt };
-}
-
-function verifyPassword(password, hash, salt) {
-  const candidate = Buffer.from(hashPassword(password, salt).hash, 'hex');
-  const expected = Buffer.from(hash, 'hex');
-  return candidate.length === expected.length && crypto.timingSafeEqual(candidate, expected);
-}
+/**
+ * PBKDF2-HMAC-SHA256, implemented so it produces the same bytes in Node and in
+ * a browser — a database made by the web build still accepts the same passwords
+ * in the desktop build. Nothing leaves this computer either way.
+ */
+const { hashPassword, verifyPassword } = require('../util/hash');
 
 function publicUser(row) {
   if (!row) return null;

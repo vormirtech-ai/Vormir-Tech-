@@ -3,7 +3,7 @@
 const db = require('../db');
 const products = require('./products');
 const settings = require('./settings');
-const { readAny, serialToIso } = require('../util/xlsx');
+const { readAny, serialToIso, bytesFromBase64, bytesFromText } = require('../util/xlsx');
 const { assert } = require('../util/errors');
 const { r2, r3 } = require('../util/money');
 const { isExpiryMonth } = require('../util/dates');
@@ -124,11 +124,11 @@ function matchProduct(name) {
  * Parses a spreadsheet into draft purchase lines. Nothing is written to the
  * database here — the operator reviews the preview and then saves.
  */
-function preview({ filename = '', base64 = '', text = '' }) {
-  const buffer = base64 ? Buffer.from(base64, 'base64') : Buffer.from(String(text), 'utf8');
+async function preview({ filename = '', base64 = '', text = '' }) {
+  const buffer = base64 ? bytesFromBase64(base64) : bytesFromText(text);
   assert(buffer.length > 0, 'That file is empty.');
   assert(buffer.length < 12 * 1024 * 1024, 'That file is larger than 12 MB — please split it.');
-  const rows = readAny(buffer, filename);
+  const rows = await readAny(buffer, filename);
   assert(rows.length > 1, 'No rows could be read from that file.');
   const { index, map } = findHeaderRow(rows);
   assert(index >= 0, 'Could not find a header row. The sheet needs column titles such as Product, Batch, Expiry, Qty, Rate, MRP.');
@@ -219,9 +219,9 @@ function materialise(actor, { lines = [] }) {
 }
 
 /** Medicine-master import — used to load an opening catalogue quickly. */
-function importProducts(actor, { filename = '', base64 = '', text = '' }) {
-  const buffer = base64 ? Buffer.from(base64, 'base64') : Buffer.from(String(text), 'utf8');
-  const rows = readAny(buffer, filename);
+async function importProducts(actor, { filename = '', base64 = '', text = '' }) {
+  const buffer = base64 ? bytesFromBase64(base64) : bytesFromText(text);
+  const rows = await readAny(buffer, filename);
   const { index, map } = findHeaderRow(rows);
   assert(index >= 0, 'Could not find a header row with a product name column.');
   const created = [];

@@ -1,0 +1,22 @@
+{
+  "name": "MedV — Pharmacy Management",
+  "short_name": "MedV",
+  "description": "Billing, batch-wise inventory, GST and reports for a medical store. Your data stays on this computer.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f3f6fb",
+  "theme_color": "#16305b",
+  "categories": ["business", "medical", "productivity"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "New bill", "url": "./index.html#/billing" },
+    { "name": "Dashboard", "url": "./index.html#/dashboard" },
+    { "name": "Backup", "url": "./index.html#/backup" }
+  ]
+}

@@ -1,6 +1,20 @@
 'use strict';
 
-const zlib = require('zlib');
+const nodeZlib = (() => {
+  try {
+    return typeof process !== 'undefined' && process.versions && process.versions.node ? require('zlib') : null;
+  } catch { return null; }
+})();
+
+/**
+ * Raw DEFLATE, whichever platform we are on: Node's zlib on the desktop,
+ * the browser's DecompressionStream in the web build.
+ */
+async function inflateRaw(bytes) {
+  if (nodeZlib) return nodeZlib.inflateRawSync(bytes);
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
 
 /**
  * A minimal, dependency-free reader for the two file formats a distributor
@@ -8,30 +22,35 @@ const zlib = require('zlib');
  * Only what is needed to read the first worksheet as a grid of strings.
  */
 
-function readZipEntries(buffer) {
+async function readZipEntries(input) {
+  const bytes = toBytes(input);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const u32 = (offset) => view.getUint32(offset, true);
+  const u16 = (offset) => view.getUint16(offset, true);
   const entries = new Map();
+
   // Walk the central directory from the end-of-central-directory record.
   let eocd = -1;
-  for (let i = buffer.length - 22; i >= 0 && i > buffer.length - 66000; i -= 1) {
-    if (buffer.readUInt32LE(i) === 0x06054b50) { eocd = i; break; }
+  for (let i = bytes.length - 22; i >= 0 && i > bytes.length - 66000; i -= 1) {
+    if (u32(i) === 0x06054b50) { eocd = i; break; }
   }
   if (eocd < 0) throw new Error('That file is not a valid .xlsx workbook.');
-  const count = buffer.readUInt16LE(eocd + 10);
-  let ptr = buffer.readUInt32LE(eocd + 16);
+  const count = u16(eocd + 10);
+  let ptr = u32(eocd + 16);
   for (let n = 0; n < count; n += 1) {
-    if (buffer.readUInt32LE(ptr) !== 0x02014b50) break;
-    const method = buffer.readUInt16LE(ptr + 10);
-    const compSize = buffer.readUInt32LE(ptr + 20);
-    const nameLen = buffer.readUInt16LE(ptr + 28);
-    const extraLen = buffer.readUInt16LE(ptr + 30);
-    const commentLen = buffer.readUInt16LE(ptr + 32);
-    const localOffset = buffer.readUInt32LE(ptr + 42);
-    const name = buffer.toString('utf8', ptr + 46, ptr + 46 + nameLen);
-    const localNameLen = buffer.readUInt16LE(localOffset + 26);
-    const localExtraLen = buffer.readUInt16LE(localOffset + 28);
+    if (ptr + 46 > bytes.length || u32(ptr) !== 0x02014b50) break;
+    const method = u16(ptr + 10);
+    const compSize = u32(ptr + 20);
+    const nameLen = u16(ptr + 28);
+    const extraLen = u16(ptr + 30);
+    const commentLen = u16(ptr + 32);
+    const localOffset = u32(ptr + 42);
+    const name = decodeUtf8(bytes.subarray(ptr + 46, ptr + 46 + nameLen));
+    const localNameLen = u16(localOffset + 26);
+    const localExtraLen = u16(localOffset + 28);
     const dataStart = localOffset + 30 + localNameLen + localExtraLen;
-    const raw = buffer.subarray(dataStart, dataStart + compSize);
-    entries.set(name, method === 0 ? raw : zlib.inflateRawSync(raw));
+    const raw = bytes.subarray(dataStart, dataStart + compSize);
+    entries.set(name, method === 0 ? raw : await inflateRaw(raw));
     ptr += 46 + nameLen + extraLen + commentLen;
   }
   return entries;
@@ -109,14 +128,42 @@ function parseSheet(xml, shared) {
 }
 
 /** Reads the first worksheet of an .xlsx buffer into an array of string rows. */
-function readWorkbook(buffer) {
-  const entries = readZipEntries(buffer);
-  const shared = parseSharedStrings(entries.get('xl/sharedStrings.xml')?.toString('utf8'));
+async function readWorkbook(buffer) {
+  const entries = await readZipEntries(buffer);
+  const shared = parseSharedStrings(decodeUtf8(entries.get('xl/sharedStrings.xml')));
   const sheetName = [...entries.keys()]
     .filter((k) => /^xl\/worksheets\/sheet\d+\.xml$/.test(k))
     .sort()[0];
   if (!sheetName) throw new Error('No worksheet was found inside that workbook.');
-  return parseSheet(entries.get(sheetName).toString('utf8'), shared);
+  return parseSheet(decodeUtf8(entries.get(sheetName)), shared);
+}
+
+/** Accepts a Buffer, a Uint8Array or an ArrayBuffer and returns bytes. */
+function toBytes(input) {
+  if (input instanceof Uint8Array) return input;
+  if (input instanceof ArrayBuffer) return new Uint8Array(input);
+  if (Array.isArray(input)) return Uint8Array.from(input);
+  return new Uint8Array(input);
+}
+
+/** Decodes a base64 string to bytes in Node and in the browser alike. */
+function bytesFromBase64(base64) {
+  if (typeof Buffer !== 'undefined') return new Uint8Array(Buffer.from(String(base64), 'base64'));
+  const binary = atob(String(base64));
+  const out = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) out[i] = binary.charCodeAt(i);
+  return out;
+}
+
+function bytesFromText(text) {
+  return new TextEncoder().encode(String(text));
+}
+
+function decodeUtf8(bytes) {
+  if (!bytes) return '';
+  return typeof Buffer !== 'undefined' && Buffer.isBuffer(bytes)
+    ? bytes.toString('utf8')
+    : new TextDecoder('utf-8').decode(bytes);
 }
 
 /** RFC4180-ish CSV/TSV reader that copes with quotes and embedded newlines. */
@@ -155,10 +202,11 @@ function readDelimited(text, delimiter = null) {
   return rows;
 }
 
-function readAny(buffer, filename = '') {
+async function readAny(input, filename = '') {
+  const bytes = toBytes(input);
   const isXlsx = /\.xlsx$/i.test(filename)
-    || (buffer.length > 4 && buffer[0] === 0x50 && buffer[1] === 0x4b);
-  return isXlsx ? readWorkbook(buffer) : readDelimited(buffer.toString('utf8'));
+    || (bytes.length > 4 && bytes[0] === 0x50 && bytes[1] === 0x4b);
+  return isXlsx ? readWorkbook(bytes) : readDelimited(decodeUtf8(bytes));
 }
 
-module.exports = { readWorkbook, readDelimited, readAny, serialToIso };
+module.exports = { readWorkbook, readDelimited, readAny, serialToIso, inflateRaw, decodeUtf8, toBytes, bytesFromBase64, bytesFromText };

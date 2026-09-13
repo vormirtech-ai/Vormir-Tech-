@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; font-src 'self'; frame-src 'self' blob:;">
+  <title>MedV — Pharmacy Management</title>
+  <link rel="icon" href="assets/icon-256.png">
+  <meta name="theme-color" content="#16305b">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/print.css">
+</head>
+<body>
+  <div id="root">
+    <div class="auth">
+      <div class="auth-form">
+        <div class="auth-card" style="text-align:center">
+          <img src="assets/logo.png" alt="MedV" style="height:38px">
+          <p class="muted" id="boot-status">Starting up…</p>
+          <noscript><p class="muted">MedV needs JavaScript. Please enable it and reload.</p></noscript>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="toasts" id="toasts"></div>
+  <div id="print-area"></div>
+  <script src="js/bridge.js"></script>
+</body>
+</html>

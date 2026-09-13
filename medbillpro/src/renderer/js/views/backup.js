@@ -8,8 +8,9 @@ import * as router from '../router.js';
 
 export async function render() {
   const host = el('div');
-  // The desktop build writes files; the browser build downloads them.
-  const isDesktop = Boolean(window.medv && window.medv.isElectron);
+  // Editions that write real files (Electron, Python) versus the browser
+  // edition, which downloads them.
+  const isDesktop = Boolean(window.medv && (window.medv.isElectron || window.medv.platform === 'python'));
   let status = await call('backup.status');
 
   async function reload() {

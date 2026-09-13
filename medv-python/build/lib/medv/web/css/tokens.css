@@ -1,0 +1,79 @@
+/* MedV design tokens — the palette is taken straight from the logo. */
+:root {
+  color-scheme: light;
+
+  --brand-blue: #1565d8;
+  --brand-blue-dark: #0f4aa8;
+  --brand-navy: #16305b;
+  --brand-navy-deep: #102344;
+  --brand-teal: #15b391;
+  --brand-teal-dark: #0f9077;
+  --brand-gradient: linear-gradient(135deg, #1565d8 0%, #15b391 100%);
+  --brand-gradient-soft: linear-gradient(135deg, rgba(21, 101, 216, .10) 0%, rgba(21, 179, 145, .10) 100%);
+
+  --bg: #f3f6fb;
+  --bg-elevated: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f7f9fd;
+  --surface-3: #eef3fa;
+  --sidebar: linear-gradient(180deg, #16305b 0%, #102344 100%);
+
+  --text: #15223c;
+  --text-soft: #46567a;
+  --text-muted: #77869f;
+  --text-invert: #ffffff;
+
+  --border: #e2e9f3;
+  --border-strong: #cfd9e8;
+  --ring: rgba(21, 101, 216, .28);
+
+  --ok: #10a071;
+  --ok-soft: #e6f7f0;
+  --warn: #d98006;
+  --warn-soft: #fdf3e3;
+  --danger: #d94141;
+  --danger-soft: #fdecec;
+  --info: #1565d8;
+  --info-soft: #e9f1fd;
+  --purple: #7b4bc4;
+  --purple-soft: #f2ebfc;
+
+  --shadow-xs: 0 1px 2px rgba(16, 35, 68, .06);
+  --shadow-sm: 0 2px 8px rgba(16, 35, 68, .07);
+  --shadow-md: 0 8px 24px rgba(16, 35, 68, .10);
+  --shadow-lg: 0 18px 48px rgba(16, 35, 68, .18);
+
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-pill: 999px;
+
+  --sidebar-w: 248px;
+  --topbar-h: 64px;
+
+  --font: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --mono: "Cascadia Mono", "Consolas", ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0e1726;
+  --bg-elevated: #16223a;
+  --surface: #16223a;
+  --surface-2: #1b2a45;
+  --surface-3: #223354;
+  --sidebar: linear-gradient(180deg, #0d1830 0%, #0a1226 100%);
+  --text: #eaf0fa;
+  --text-soft: #b7c4db;
+  --text-muted: #8494b0;
+  --border: #26364f;
+  --border-strong: #35486a;
+  --ok-soft: #10321f;
+  --warn-soft: #33260d;
+  --danger-soft: #3a1a1c;
+  --info-soft: #132a4c;
+  --purple-soft: #241b3c;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, .35);
+  --shadow-md: 0 10px 28px rgba(0, 0, 0, .45);
+  --shadow-lg: 0 20px 52px rgba(0, 0, 0, .55);
+}

@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "medv"
+version = "1.0.0"
+description = "MedV — offline pharmacy and medical store management: billing, batch-wise inventory, GST and reports. Stores everything locally in SQLite."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Proprietary" }
+authors = [{ name = "Vormir Tech Solutions", email = "vormirtech@gmail.com" }]
+keywords = ["pharmacy", "medical-store", "billing", "gst", "inventory", "offline", "sqlite"]
+classifiers = [
+  "Environment :: Web Environment",
+  "Intended Audience :: Healthcare Industry",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Topic :: Office/Business",
+]
+# No dependencies at all — everything MedV needs ships with Python.
+dependencies = []
+
+[project.scripts]
+medv = "medv.app:main"
+
+[project.urls]
+Homepage = "https://github.com/vormirtech-ai/Vormir-Tech-"
+
+[tool.setuptools.packages.find]
+include = ["medv*"]
+
+[tool.setuptools.package-data]
+medv = ["web/**/*"]

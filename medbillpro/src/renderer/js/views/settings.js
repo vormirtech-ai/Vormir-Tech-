@@ -230,7 +230,9 @@ export async function render({ query }) {
             el('dt', 'Version'), el('dd', info.version),
             el('dt', 'Product'), el('dd', 'MedV — pharmacy management'),
             el('dt', 'Built by'), el('dd', 'Vormir Tech Solutions, Nagpur'),
-            el('dt', 'Edition'), el('dd', window.medv && window.medv.isElectron ? 'Desktop (Electron)' : 'Web (runs in your browser)'),
+            el('dt', 'Edition'), el('dd', info.edition === 'python'
+              ? 'Python (local server on this computer)'
+              : (window.medv && window.medv.isElectron ? 'Desktop (Electron)' : 'Web (runs in your browser)')),
             el('dt', 'Storage'), el('dd', 'SQLite on this computer'),
             el('dt', 'Internet'), el('dd', 'Not required for any feature')),
           el('div.note.mt-16', icon('shield'), el('div',
@@ -245,7 +247,7 @@ export async function render({ query }) {
             el('dt', 'Backups'), el('dd', el('span.mono.fs-12', info.paths.backups)),
             el('dt', 'Exports'), el('dd', el('span.mono.fs-12', info.paths.exports))),
           el('div.row.mt-16',
-            window.medv && window.medv.isElectron
+            window.medv && (window.medv.isElectron || window.medv.platform === 'python')
               ? el('button.btn', { onclick: () => shellApi.showItem(info.paths.db) }, icon('folder'), 'Open data folder')
               : null,
             el('button.btn', { onclick: () => window.location.reload() }, icon('refresh'), 'Reload app')),

@@ -1,0 +1,15 @@
+Metadata-Version: 2.4
+Name: medv
+Version: 1.0.0
+Summary: MedV — offline pharmacy and medical store management: billing, batch-wise inventory, GST and reports. Stores everything locally in SQLite.
+Author-email: Vormir Tech Solutions <vormirtech@gmail.com>
+License: Proprietary
+Project-URL: Homepage, https://github.com/vormirtech-ai/Vormir-Tech-
+Keywords: pharmacy,medical-store,billing,gst,inventory,offline,sqlite
+Classifier: Environment :: Web Environment
+Classifier: Intended Audience :: Healthcare Industry
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Topic :: Office/Business
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown

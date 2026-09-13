@@ -1,0 +1,64 @@
+==========================================================
+  MedV - Pharmacy Management (Python edition)
+  by Vormir Tech Solutions, Nagpur
+==========================================================
+
+THREE STEPS. THAT IS ALL.
+
+  1. Install Python (once, free, two minutes)
+        https://www.python.org/downloads/
+     On the FIRST screen of the installer, tick
+        [x] Add python.exe to PATH
+     then click "Install Now".
+
+  2. Extract this zip properly
+        Right-click the zip -> Properties -> tick "Unblock" -> OK
+        Right-click it again -> "Extract All..." -> C:\MedV
+     (Do NOT run anything from the zip preview window.)
+
+  3. Open C:\MedV and double-click
+        start-medv.bat
+
+     MedV opens in your browser. Complete the 3-step setup
+     wizard and start billing.
+
+  Keep the small black window open while you work.
+  Closing it stops MedV.
+
+
+WHAT YOU DO *NOT* HAVE TO DO
+  - No "npm install"
+  - No installer to run, so no Windows security warnings
+  - No internet connection
+  - No account, no licence key, no cloud
+
+
+FIRST LOGIN
+  Username: admin
+  Password: the one you choose in the setup wizard
+
+
+WHERE YOUR DATA IS
+  %APPDATA%\MedBillPro\data\medbill.db
+  (Settings -> About -> Open data folder shows it for you.)
+
+
+THE ONE HABIT THAT MATTERS
+  Backup -> "Backup to..." at the end of every day, and copy
+  the file onto a pen drive. It lands in:
+        Documents\MedV Backups\
+
+
+ON A MAC OR LINUX
+  Open a terminal in this folder and run:
+        ./start-medv.sh
+
+
+DOCUMENTATION
+  README.md              what it does, how it is built
+  docs\USER-GUIDE.md     day-to-day counter guide + shortcuts
+  docs\INSTALL.md        installing, moving PCs, troubleshooting
+
+
+SUPPORT
+  vormirtech@gmail.com

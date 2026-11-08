@@ -1,0 +1,10 @@
+{
+  "appId": "com.vormirtech.cuezone",
+  "appName": "CueZone",
+  "webDir": "www",
+  "android": { "backgroundColor": "#0B6B4C" },
+  "plugins": {
+    "SystemBars": { "insetsHandling": "css", "initialViewportFitValueHint": "cover", "style": "DARK" },
+    "LocalNotifications": { "smallIcon": "ic_stat_cue", "iconColor": "#0B6B4C" }
+  }
+}

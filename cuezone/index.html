@@ -211,6 +211,21 @@ textarea.input{padding:12px 14px;min-height:110px;font-size:13px;font-family:ui-
 .qr{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px;background:#fff;border-radius:12px;margin:0 auto 14px;width:fit-content;color:#111;font-size:12px}
 .qr svg{width:180px;height:180px}
 .note{font-size:13px;color:var(--muted);margin:-6px 0 14px}
+.payqr{display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px;border-radius:16px;background:#fff;color:#111;margin:0 auto 14px;width:100%;max-width:340px;box-shadow:var(--shadow);border:1px solid var(--line)}
+.payqr img,.payqr svg{width:100%;max-width:240px;height:auto;aspect-ratio:auto;border-radius:8px;display:block}
+.payqr .amt{font-family:var(--display);font-size:30px;font-weight:700;line-height:1}
+.payqr .sub{font-size:12px;color:#555;text-align:center}
+.payqr .zoom{font-size:12px;font-weight:600;color:#0B6B4C}
+.qr-full{position:fixed;inset:0;z-index:80;background:#fff;color:#111;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:max(20px,var(--safe-area-inset-top,env(safe-area-inset-top,0px))) max(20px,var(--safe-area-inset-right,env(safe-area-inset-right,0px))) max(20px,var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px))) max(20px,var(--safe-area-inset-left,env(safe-area-inset-left,0px)))}
+.qr-full img,.qr-full svg{width:min(86vw,62vh);height:auto;display:block}
+.qr-full .amt{font-family:var(--display);font-size:44px;font-weight:700;line-height:1}
+.qr-full .club{font-family:var(--display);font-size:22px;text-transform:uppercase;letter-spacing:.04em}
+.qr-full button{min-height:46px;padding:0 24px;border-radius:12px;background:#0B6B4C;color:#fff;font-weight:600}
+.btn.wa{background:#1FA855;color:#fff;border-color:transparent}
+.btn.wa svg{width:20px;height:20px;fill:currentColor;flex:none}
+#s-qr{flex-wrap:wrap}#s-qr .grow{min-width:150px}#s-qr .s{white-space:normal}
+.thumb{width:52px;height:52px;border-radius:8px;object-fit:contain;background:#fff;border:1px solid var(--line);flex:none}
+.bill-img{width:100%;border-radius:12px;border:1px solid var(--line);display:block;margin-bottom:12px}
 
 /* Alerts */
 .toasts{position:fixed;left:0;right:0;top:calc(var(--safe-area-inset-top,env(safe-area-inset-top,0px)) + 8px);z-index:60;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;padding-inline:max(12px,var(--safe-area-inset-left,env(safe-area-inset-left,0px))) max(12px,var(--safe-area-inset-right,env(safe-area-inset-right,0px)))}
@@ -562,18 +577,19 @@ function checkout(id){
    '<div id="c-qr"></div>'+
    '<div class="field" id="c-name-f"><label for="c-name">Customer name</label><input class="input" id="c-name" value="'+esc(s.customer)+'" placeholder="Needed for credit"></div>'+
    '<div class="field"><label for="c-phone">Phone</label><input class="input" id="c-phone" type="tel" inputmode="tel" value="'+esc(s.phone)+'" placeholder="For the WhatsApp bill"></div>'+
-   '<button class="btn primary block" id="c-save">Save bill</button>';
+   '<button class="btn primary block" id="c-save">Save bill</button>'+
+   '<button class="btn wa block" id="c-save-wa" style="margin-top:10px">'+WA_ICON+'<span>Save &amp; send on WhatsApp</span></button>';
   openSheet('Bill · '+esc(t.name),body,function(sh){
     function total(){var d=parseFloat($('#c-disc',sh).value)||0;disc=discMode==='pct'?Math.round(b.total*Math.min(d,100)/100):Math.min(d,b.total);return Math.max(0,Math.round(b.total-disc))}
     function upd(){var tot=total();$('#c-disc-row',sh).hidden=!disc;$('#c-disc-v',sh).textContent='−'+money(disc);$('#c-total',sh).textContent=money(tot);
       $('#c-split-row',sh).hidden=split<2;$('#c-split-n',sh).textContent=split;$('#c-split-v',sh).textContent=money(Math.ceil(tot/split));$('#c-sn',sh).textContent=split;
       $('#c-save',sh).textContent=pay==='Credit'?'Save to khata · '+money(tot):'Collect '+money(tot)+' · '+pay;
-      $('#c-qr',sh).innerHTML=pay==='UPI'?upiQr(tot,split>1?Math.ceil(tot/split):0):'';}
+      $('#c-qr',sh).innerHTML=pay==='UPI'?payQrCard(tot,split>1?Math.ceil(tot/split):0):'';bindQr(sh);}
     $('#c-disc',sh).oninput=upd;
     bindSeg(sh,'#c-dmode',function(v){discMode=v;upd()});
     $('#c-sm',sh).onclick=function(){split=Math.max(1,split-1);upd()};$('#c-sp',sh).onclick=function(){split=Math.min(20,split+1);upd()};
     $$('#c-pay .pill',sh).forEach(function(p){p.onclick=function(){$$('#c-pay .pill',sh).forEach(function(x){x.setAttribute('aria-pressed',x===p)});pay=p.dataset.v;upd()}});
-    $('#c-save',sh).onclick=function(){
+    function saveBill(sendWa){
       var name=$('#c-name',sh).value.trim();
       if(pay==='Credit'&&!name){$('#c-name',sh).focus();toast('warn','Add the customer name','Credit bills need a name to collect later');return}
       var tot=total();
@@ -581,16 +597,87 @@ function checkout(id){
       S.bills.unshift(bill);cancelNative(t);t.s=null;save();
       if(modalOpenFor===t.id)closeModal();
       render();receiptSheet(bill,true);
-    };
+      if(sendWa)openExternal(waLink(bill));
+    }
+    $('#c-save',sh).onclick=function(){saveBill(false)};
+    $('#c-save-wa',sh).onclick=function(){saveBill(true)};
     upd();
   },t.id);
 }
-function upiQr(amount,each){
-  if(!S.settings.upi)return '<p class="note">Add your UPI ID in Settings to show a payment QR with the amount filled in.</p>';
-  if(typeof window.qrcode!=='function')return '';
-  var link='upi://pay?pa='+encodeURIComponent(S.settings.upi)+'&pn='+encodeURIComponent(S.settings.club)+'&am='+amount+'&cu=INR&tn='+encodeURIComponent('Table bill');
-  try{var q=window.qrcode(0,'M');q.addData(link);q.make();return '<div class="qr">'+q.createSvgTag({cellSize:4,margin:2,scalable:true})+'<b>Scan to pay '+money(amount)+'</b><span>'+esc(S.settings.upi)+'</span></div>'}catch(e){return ''}
+/* ---------- Payment QR ---------- */
+var QR_KEY='cuezone.qr';
+function getQr(){try{return localStorage.getItem(QR_KEY)||''}catch(e){return ''}}
+function qrSource(){var up=getQr();if(up&&(S.settings.qrMode!=='auto'||!S.settings.upi))return {kind:'upload',src:up};if(S.settings.upi&&typeof window.qrcode==='function')return {kind:'auto'};if(up)return {kind:'upload',src:up};return null}
+function upiLink(amount){return 'upi://pay?pa='+encodeURIComponent(S.settings.upi)+'&pn='+encodeURIComponent(S.settings.club)+(amount?'&am='+amount:'')+'&cu=INR&tn='+encodeURIComponent('Table bill')}
+function upiModules(amount){var q=window.qrcode(0,'M');q.addData(upiLink(amount));q.make();return q}
+function qrGraphic(amount){var src=qrSource();if(!src)return '';if(src.kind==='upload')return '<img src="'+src.src+'" alt="Payment QR code">';try{return upiModules(amount).createSvgTag({cellSize:4,margin:2,scalable:true})}catch(e){return ''}}
+function payQrCard(amount,each){
+  var src=qrSource();
+  if(!src)return '<div class="sum" style="padding:12px 14px"><b>No payment QR yet</b><p class="note" style="margin:4px 0 10px">Upload your PhonePe, GPay or Paytm QR once and it shows here at every UPI bill.</p><button class="btn sm primary" data-goqr>Add payment QR</button></div>';
+  return '<button class="payqr" data-qrfull="'+amount+'" data-each="'+(each||0)+'">'+qrGraphic(amount)+'<div class="amt">Pay '+money(amount)+'</div>'+
+    (each?'<div class="sub">'+money(each)+' each</div>':'')+
+    '<div class="sub">'+(src.kind==='auto'?'Amount fills in automatically · '+esc(S.settings.upi):'Customer types '+money(each||amount)+' after scanning')+'</div><span class="zoom">Tap to show full screen</span></button>';
 }
+function showQrFull(amount,each){
+  var w=document.createElement('div');w.className='qr-full';w.setAttribute('role','dialog');
+  w.innerHTML='<div class="club">'+esc(S.settings.club)+'</div>'+qrGraphic(amount)+'<div class="amt">Pay '+money(each||amount)+'</div>'+(each?'<div>'+money(amount)+' total, split '+Math.round(amount/each)+' ways</div>':'')+'<button>Done</button>';
+  w.querySelector('button').onclick=function(){w.remove()};document.body.appendChild(w);
+}
+function bindQr(root){
+  $$('[data-qrfull]',root).forEach(function(b){b.onclick=function(){showQrFull(+b.dataset.qrfull,+b.dataset.each)}});
+  $$('[data-goqr]',root).forEach(function(b){b.onclick=function(){setTab('settings');setTimeout(function(){var el=$('#s-qr');if(el)el.scrollIntoView({block:'center'})},50)}});
+}
+function pickQrImage(done){
+  var inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.style.display='none';document.body.appendChild(inp);
+  inp.onchange=function(){var f=inp.files&&inp.files[0];inp.remove();if(!f)return;
+    var rd=new FileReader();rd.onload=function(){var img=new Image();img.onload=function(){
+      var max=900,sc=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);
+      var x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(img,0,0,c.width,c.height);
+      var url=c.toDataURL('image/jpeg',0.92);
+      try{localStorage.setItem(QR_KEY,url);S.settings.qrMode='upload';save();done(true)}catch(e){toast('warn','Could not save the QR','The picture is too large. Crop it to just the QR and try again.')}
+    };img.onerror=function(){toast('warn','That file is not a picture','Choose a photo or screenshot of your QR')};img.src=rd.result};rd.readAsDataURL(f)};
+  inp.click();
+}
+
+/* ---------- Bill image ---------- */
+function billImage(b,cb){
+  var W=720,pad=48,lines=[],c=document.createElement('canvas'),x=c.getContext('2d');
+  lines.push(['Bill #'+b.no,dateStr(b.end)]);lines.push([b.table,timeStr(b.start)+' – '+timeStr(b.end)]);
+  if(b.customer)lines.push(['Customer',b.customer]);
+  lines.push(['Table · '+durStr(b.playMs),money(b.tableCharge)]);
+  b.items.forEach(function(it){lines.push([it.name+' × '+it.qty,money(it.price*it.qty)])});
+  if(b.discount)lines.push(['Discount','−'+money(b.discount)]);
+  var showQr=(!b.paid||b.pay==='UPI')&&qrSource();var qrH=showQr?420:0;
+  var H=150+lines.length*46+120+(b.split>1?40:0)+qrH+90;c.width=W;c.height=H;
+  x.fillStyle='#fff';x.fillRect(0,0,W,H);x.fillStyle='#0B6B4C';x.fillRect(0,0,W,120);
+  x.fillStyle='#fff';x.font='700 40px "Barlow Condensed",Arial Narrow,sans-serif';x.textBaseline='middle';x.fillText(S.settings.club.toUpperCase(),pad,60);
+  var y=160;x.font='400 26px Figtree,Arial,sans-serif';
+  lines.forEach(function(l,i){x.fillStyle=i<2?'#5B6C64':'#13201A';x.textAlign='left';x.fillText(l[0],pad,y);x.textAlign='right';x.fillText(l[1],W-pad,y);y+=46});
+  x.strokeStyle='#C9D4CE';x.setLineDash([8,6]);x.beginPath();x.moveTo(pad,y-14);x.lineTo(W-pad,y-14);x.stroke();x.setLineDash([]);
+  y+=24;x.font='700 36px Figtree,Arial,sans-serif';x.fillStyle='#13201A';x.textAlign='left';x.fillText('Total',pad,y);x.textAlign='right';x.fillText(money(b.total),W-pad,y);
+  if(b.split>1){y+=42;x.font='400 24px Figtree,Arial,sans-serif';x.fillStyle='#5B6C64';x.textAlign='left';x.fillText('Split '+b.split+' ways',pad,y);x.textAlign='right';x.fillText(money(Math.ceil(b.total/b.split))+' each',W-pad,y)}
+  y+=52;x.textAlign='center';x.font='600 26px Figtree,Arial,sans-serif';
+  x.fillStyle=b.paid?'#1E8A4B':'#C42F28';x.fillText(b.paid?'Paid by '+b.pay:'Payment due: '+money(b.total),W/2,y);
+  function finish(){x.textAlign='center';x.font='400 22px Figtree,Arial,sans-serif';x.fillStyle='#5B6C64';x.fillText('Thank you for playing!',W/2,H-40);cb(c)}
+  if(!showQr)return finish();
+  var qy=y+30,qs=330,qx=(W-qs)/2;
+  if(showQr.kind==='auto'){try{var q=upiModules(b.paid?0:b.total),n=q.getModuleCount(),cs=qs/(n+4);x.fillStyle='#000';for(var r=0;r<n;r++)for(var col=0;col<n;col++)if(q.isDark(r,col))x.fillRect(qx+(col+2)*cs,qy+(r+2)*cs,Math.ceil(cs),Math.ceil(cs))}catch(e){}
+    x.font='600 22px Figtree,Arial,sans-serif';x.fillStyle='#13201A';x.fillText('Scan to pay · '+S.settings.upi,W/2,qy+qs+30);finish()}
+  else{var im=new Image();im.onload=function(){var sc=Math.min(qs/im.width,qs/im.height),w=im.width*sc,h=im.height*sc;x.drawImage(im,(W-w)/2,qy+(qs-h)/2,w,h);x.font='600 22px Figtree,Arial,sans-serif';x.fillStyle='#13201A';x.fillText('Scan to pay',W/2,qy+qs+30);finish()};im.onerror=finish;im.src=showQr.src}
+}
+function shareBillImage(b){
+  billImage(b,function(c){
+    var dataUrl=c.toDataURL('image/png'),name='bill-'+b.no+'.png';
+    var FS=NATIVE&&CAP.Plugins?CAP.Plugins.Filesystem:null,SH=NATIVE&&CAP.Plugins?CAP.Plugins.Share:null;
+    if(FS&&SH){FS.writeFile({path:name,data:dataUrl.split(',')[1],directory:'CACHE'}).then(function(r){return SH.share({title:'Bill #'+b.no,text:S.settings.club+' bill #'+b.no+' · '+money(b.total),files:[r.uri],dialogTitle:'Send bill'})}).catch(function(e){if(!/cancel/i.test(String(e&&e.message||e)))previewImage(dataUrl)});return}
+    c.toBlob(function(blob){
+      try{var file=new File([blob],name,{type:'image/png'});if(navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:'Bill #'+b.no}).catch(function(){});return}}catch(e){}
+      previewImage(dataUrl);
+    },'image/png');
+  });
+}
+function previewImage(url){openSheet('Bill picture','<img class="bill-img" src="'+url+'" alt="Bill picture"><p class="note" style="margin:0">Long-press the picture to save or share it.</p>')}
+
 function billText(b){
   var L=['*'+S.settings.club+'*','Bill #'+b.no+' · '+dateStr(b.end),b.table+' · '+timeStr(b.start)+' – '+timeStr(b.end),'Table time: '+durStr(b.playMs)+' (billed '+b.billedMin+' min @ '+money(b.rate)+'/hr) = '+money(b.tableCharge)];
   b.items.forEach(function(it){L.push(it.name+' × '+it.qty+' = '+money(it.price*it.qty))});
@@ -598,11 +685,13 @@ function billText(b){
   L.push('*Total: '+money(b.total)+'*');
   if(b.split>1)L.push('Split '+b.split+' ways: '+money(Math.ceil(b.total/b.split))+' each');
   L.push(b.paid?('Paid by '+b.pay):'Added to credit (khata) — please pay at the counter');
-  if(S.settings.upi&&!b.paid)L.push('UPI: '+S.settings.upi);
+  if(!b.paid&&S.settings.upi)L.push('Pay by UPI to: '+S.settings.upi);
   L.push('Thank you for playing!');
   return L.join('\n');
 }
-function waLink(b){var p=(b.phone||'').replace(/\D/g,'');if(p.length===10)p='91'+p;return 'https://wa.me/'+(p||'')+'?text='+encodeURIComponent(billText(b))}
+function cleanPhone(v){var p=String(v||'').replace(/\D/g,'');if(p.length===11&&p[0]==='0')p=p.slice(1);if(p.length===10)p='91'+p;return p}
+function waLink(b){return 'https://wa.me/'+cleanPhone(b.phone)+'?text='+encodeURIComponent(billText(b))}
+var WA_ICON='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-5 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm3 6.5a1.5 1.5 0 1 0 0 .01zm5 0a1.5 1.5 0 1 0 0 .01zm5 0a1.5 1.5 0 1 0 0 .01z"/></svg>';
 function openExternal(url){if(NATIVE){window.location.href=url}else{var a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove()}}
 function copyText(txt,label){
   function ok(){toast('ok',label||'Copied','')}
@@ -619,11 +708,17 @@ function receiptSheet(b,fresh){
    '<div class="l tot"><span>Total</span><span>'+money(b.total)+'</span></div>'+
    (b.split>1?'<div class="l"><span>Split '+b.split+' ways</span><span>'+money(Math.ceil(b.total/b.split))+' each</span></div>':'')+
    '<div class="l"><span>Payment</span><span><span class="tag '+b.pay.toLowerCase()+'">'+(b.paid?b.pay:'Credit due')+'</span></span></div></div>'+
-   '<div class="row"><button class="btn primary" id="rc-wa">Send on WhatsApp</button><button class="btn" id="rc-copy">Copy bill</button></div>'+
+   (!b.paid?payQrCard(b.total,b.split>1?Math.ceil(b.total/b.split):0):'')+
+   '<div class="field"><label for="rc-phone">Customer WhatsApp number</label><input class="input" id="rc-phone" type="tel" inputmode="tel" value="'+esc(b.phone)+'" placeholder="10-digit mobile number"></div>'+
+   '<button class="btn wa block" id="rc-wa">'+WA_ICON+'<span>Send bill on WhatsApp</span></button>'+
+   '<div class="row" style="margin-top:10px"><button class="btn" id="rc-img">Share as picture</button><button class="btn" id="rc-copy">Copy text</button></div>'+
    (!b.paid?'<div class="group-h">Collect credit</div><div class="row">'+['Cash','UPI','Card'].map(function(p){return '<button class="btn" data-paid="'+p+'">Paid by '+p+'</button>'}).join('')+'</div>':'')+
    (!fresh?'<div class="row" style="margin-top:10px"><button class="btn danger" id="rc-del">Delete bill</button></div>':'');
   openSheet(fresh?'Bill saved':'Bill #'+b.no,body,function(sh){
-    $('#rc-wa',sh).onclick=function(){openExternal(waLink(b))};
+    bindQr(sh);
+    function takePhone(){var v=$('#rc-phone',sh).value.trim();if(v!==b.phone){b.phone=v;save()}}
+    $('#rc-wa',sh).onclick=function(){takePhone();var p=cleanPhone(b.phone);if(p&&p.length<11){toast('warn','Check the number','Enter a 10-digit mobile number');$('#rc-phone',sh).focus();return}openExternal(waLink(b))};
+    $('#rc-img',sh).onclick=function(){takePhone();shareBillImage(b)};
     $('#rc-copy',sh).onclick=function(){copyText(billText(b),'Bill copied')};
     $$('[data-paid]',sh).forEach(function(x){x.onclick=function(){b.paid=true;b.pay=x.dataset.paid;b.paidAt=Date.now();save();render();receiptSheet(b);toast('ok','Credit collected',money(b.total)+' by '+b.pay)}});
     var d=$('#rc-del',sh),armed=false;if(d)d.onclick=function(){if(!armed){armed=true;d.textContent='Tap again to delete';return}S.bills=S.bills.filter(function(x){return x.id!==b.id});save();closeSheet();render();toast('ok','Bill deleted','')};
@@ -693,7 +788,12 @@ function renderSettings(){
   var h='<div class="section-h"><h2>Settings</h2></div>'+
    (!NATIVE&&window.CUEZONE_APK?'<div class="group-h">Android app</div><div class="list"><a class="li" style="color:inherit;text-decoration:none" href="'+esc(window.CUEZONE_APK)+'" target="_blank" rel="noopener"><div class="grow"><div class="t">Download CueZone for Android</div><div class="s">Alerts keep ringing even when the phone is locked</div></div><span class="btn sm primary">Get APK</span></a></div>':'')+
    '<div class="group-h">Club</div><div class="list"><button class="li" id="s-club"><div class="grow"><div class="t">Club name</div><div class="s">'+esc(st.club)+'</div></div><span class="s">Edit</span></button>'+
-   '<button class="li" id="s-upi"><div class="grow"><div class="t">UPI ID for payment QR</div><div class="s">'+(st.upi?esc(st.upi):'Not set')+'</div></div><span class="s">Edit</span></button></div>'+
+   '</div>'+
+   '<div class="group-h">Payments</div><div class="list">'+
+   '<div class="li" id="s-qr">'+(getQr()?'<img class="thumb" src="'+getQr()+'" alt="Your payment QR">':'')+'<div class="grow"><div class="t">Payment QR</div><div class="s">'+(getQr()?'Shown at UPI bills and on bill pictures':'Upload your PhonePe, GPay or Paytm QR')+'</div></div><div class="row" style="flex-wrap:nowrap;gap:6px">'+(getQr()?'<button class="btn sm" id="s-qr-del">Remove</button>':'')+'<button class="btn sm primary" id="s-qr-up">'+(getQr()?'Change':'Upload')+'</button></div></div>'+
+   '<button class="li" id="s-upi"><div class="grow"><div class="t">UPI ID</div><div class="s">'+(st.upi?esc(st.upi):'Optional · makes a QR with the amount already filled in')+'</div></div><span class="s">Edit</span></button>'+
+   (getQr()&&st.upi?'<div class="li"><div class="grow"><div class="t">QR to show</div><div class="s">'+(st.qrMode==='auto'?'Amount fills in by itself':'Customer types the amount')+'</div></div><div class="seg" id="s-qrmode" style="flex:none"><button data-v="upload" aria-pressed="'+(st.qrMode!=='auto')+'" style="padding:0 10px">Uploaded</button><button data-v="auto" aria-pressed="'+(st.qrMode==='auto')+'" style="padding:0 10px">With amount</button></div></div>':'')+
+   '<div class="li"><div class="grow"><div class="t">Preview</div><div class="s">See what customers scan</div></div><button class="btn sm" id="s-qr-test">Show QR</button></div></div>'+
    '<div class="group-h" style="display:flex;justify-content:space-between"><span>Tables & rates</span><button class="btn sm" id="s-addt">Add table</button></div><div class="list">'+S.tables.map(function(t){return '<button class="li" data-et="'+t.id+'"><div class="grow"><div class="t">'+esc(t.name)+'</div><div class="s">'+esc(t.type)+' · '+money(t.rate)+'/hr · min '+money(t.minCharge)+'</div></div>'+(t.s?'<span class="tag">In use</span>':'<span class="s">Edit</span>')+'</button>'}).join('')+'</div>'+
    '<div class="group-h" style="display:flex;justify-content:space-between"><span>Canteen menu</span><button class="btn sm" id="s-addm">Add item</button></div><div class="list">'+S.menu.map(function(m){return '<button class="li" data-em="'+m.id+'"><div class="grow"><div class="t">'+esc(m.name)+'</div><div class="s">'+esc(m.cat||'')+'</div></div><span class="v num">'+money(m.price)+'</span></button>'}).join('')+'</div>'+
    '<div class="group-h">Alerts</div><div class="list">'+
@@ -713,7 +813,11 @@ function renderSettings(){
    '<p class="note" style="margin-top:18px;text-align:center">CueZone · data is stored on this device only</p>';
   $('#main').innerHTML=h;
   $('#s-club').onclick=function(){textSheet('Club name',st.club,function(v){st.club=v||st.club})};
-  $('#s-upi').onclick=function(){textSheet('UPI ID',st.upi,function(v){st.upi=v},'e.g. cuezone@okaxis')};
+  $('#s-upi').onclick=function(){textSheet('UPI ID',st.upi,function(v){st.upi=v.replace(/\s/g,'')},'e.g. cuezone@okaxis')};
+  $('#s-qr-up').onclick=function(){pickQrImage(function(){renderSettings();toast('ok','Payment QR saved','It shows when you pick UPI at billing')})};
+  var qd=$('#s-qr-del');if(qd){var qarm=false;qd.onclick=function(){if(!qarm){qarm=true;qd.textContent='Tap again';return}try{localStorage.removeItem(QR_KEY)}catch(e){}renderSettings();toast('ok','Payment QR removed','')}}
+  var qm=$('#s-qrmode');if(qm)bindSeg($('#main'),'#s-qrmode',function(v){st.qrMode=v;save();renderSettings()});
+  $('#s-qr-test').onclick=function(){if(!qrSource()){toast('warn','No payment QR yet','Upload your QR or add your UPI ID first');return}showQrFull(100,0)};
   $('#s-addt').onclick=function(){tableEdit(null)};
   $$('[data-et]').forEach(function(b){b.onclick=function(){tableEdit(T(b.dataset.et))}});
   $('#s-addm').onclick=function(){menuEdit(null)};

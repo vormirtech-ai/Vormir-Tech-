@@ -1,0 +1,758 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0B6B4C">
+<title>CueZone Snooker Club</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="description" content="Snooker club manager: table timers, time-up alerts, billing, canteen, khata and reports.">
+<link rel="stylesheet" href="fonts/fonts.css">
+<script>window.CUEZONE_APK="https://github.com/vormirtech-ai/Vormir-Tech-/releases/latest/download/CueZone.apk"</script>
+<script src="lib/qrcode.js"></script>
+<style>:root{padding-top:var(--safe-area-inset-top,env(safe-area-inset-top,0px));padding-bottom:0}body{-webkit-user-select:none;user-select:none}input,textarea{-webkit-user-select:text;user-select:text}</style>
+</head>
+<body>
+
+
+<style>
+/* Layout: one-screen app — sticky club header, scrolling content, fixed bottom tab bar, bottom sheets for actions */
+:root{
+  --bg:#EDF2EF; --surface:#FFFFFF; --surface-2:#F4F7F5; --fg:#13201A; --muted:#5B6C64; --line:#D7E1DB;
+  --baize:#0B6B4C; --baize-2:#0E7F5A; --baize-soft:#DDEEE6; --on-baize:#FFFFFF; --head:#0B6B4C; --on-head:#FFFFFF;
+  --ball-red:#C42F28; --ball-yellow:#D49A00; --ball-green:#1E8A4B; --ball-brown:#8C5A2A; --ball-blue:#1F5EBE; --ball-pink:#CF5F93;
+  --red-soft:#FBE4E2; --yellow-soft:#FBF0CF; --blue-soft:#E1EAF8; --brown-soft:#F1E6DA; --green-soft:#DFF1E6;
+  --shadow:0 1px 2px rgba(19,32,26,.06),0 4px 14px rgba(19,32,26,.06);
+  --scrim:rgba(10,18,14,.45);
+  --display:"Barlow Condensed","Roboto Condensed","Arial Narrow",sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0C1310; --surface:#141D19; --surface-2:#1A2520; --fg:#E6EEE9; --muted:#93A59C; --line:#25332C;
+  --baize:#2EA478; --baize-2:#38B888; --baize-soft:#16342A; --on-baize:#06140E; --head:#0F3B2C; --on-head:#E6F2EC;
+  --ball-red:#F0625B; --ball-yellow:#F0C232; --ball-green:#43BE76; --ball-brown:#C98E55; --ball-blue:#6698F2; --ball-pink:#EC86B5;
+  --red-soft:#3A1A18; --yellow-soft:#392E0E; --blue-soft:#172640; --brown-soft:#33241A; --green-soft:#15301F;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.25); --scrim:rgba(0,0,0,.6); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0C1310; --surface:#141D19; --surface-2:#1A2520; --fg:#E6EEE9; --muted:#93A59C; --line:#25332C;
+  --baize:#2EA478; --baize-2:#38B888; --baize-soft:#16342A; --on-baize:#06140E; --head:#0F3B2C; --on-head:#E6F2EC;
+  --ball-red:#F0625B; --ball-yellow:#F0C232; --ball-green:#43BE76; --ball-brown:#C98E55; --ball-blue:#6698F2; --ball-pink:#EC86B5;
+  --red-soft:#3A1A18; --yellow-soft:#392E0E; --blue-soft:#172640; --brown-soft:#33241A; --green-soft:#15301F;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.25); --scrim:rgba(0,0,0,.6); color-scheme:dark}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45;margin:0;overscroll-behavior:none}
+body::before{content:"";position:fixed;inset:0 0 auto;height:var(--safe-area-inset-top,env(safe-area-inset-top,0px));z-index:30;background:var(--head)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none;padding:0}
+:focus-visible{outline:2px solid var(--baize-2);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+/* Header */
+.top{position:sticky;top:var(--safe-area-inset-top,env(safe-area-inset-top,0px));z-index:20;background:var(--head);color:var(--on-head);
+  padding-left:max(16px,var(--safe-area-inset-left,env(safe-area-inset-left,0px)));padding-right:max(16px,var(--safe-area-inset-right,env(safe-area-inset-right,0px)));padding-block:12px 14px}
+.top-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.club{font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:.02em;line-height:1.1;text-transform:uppercase;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.clock{font-family:var(--display);font-weight:600;font-size:20px;opacity:.92;white-space:nowrap;flex:none}
+.top-sub{font-size:13px;opacity:.85;margin-top:2px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.stat{background:rgba(255,255,255,.12);border-radius:10px;padding:8px 10px}
+:root[data-theme="dark"] .stat{background:rgba(0,0,0,.14)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .stat{background:rgba(0,0,0,.14)}}
+.stat b{display:block;font-family:var(--display);font-size:24px;font-weight:700;line-height:1}
+.stat span{font-size:11px;text-transform:uppercase;letter-spacing:.08em;opacity:.85}
+
+main{padding-left:max(16px,var(--safe-area-inset-left,env(safe-area-inset-left,0px)));padding-right:max(16px,var(--safe-area-inset-right,env(safe-area-inset-right,0px)));padding-block:16px calc(96px + var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)));max-width:980px;margin:0 auto}
+.section-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:4px 0 12px}
+.section-h h2{font-family:var(--display);font-size:20px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:0}
+.section-h small{color:var(--muted);font-size:13px}
+.demo-note{background:var(--yellow-soft);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:14px;display:flex;gap:10px;justify-content:space-between;align-items:center}
+.demo-note button{font-weight:600;text-decoration:underline;white-space:nowrap}
+
+/* Table cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:12px}
+.card{position:relative;text-align:left;background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:14px 14px 12px;display:flex;flex-direction:column;gap:6px;border:1.5px solid transparent;min-width:0;overflow:hidden}
+.card[data-status="free"]{background:var(--surface)}
+.card[data-status="running"]{border-color:var(--ball-blue)}
+.card[data-status="paused"]{border-color:var(--ball-brown)}
+.card[data-status="warn"]{border-color:var(--ball-yellow);background:var(--yellow-soft)}
+.card[data-status="over"]{border-color:var(--ball-red);background:var(--red-soft);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 4px color-mix(in srgb,var(--ball-red) 25%,transparent)}}
+@media (prefers-reduced-motion:reduce){.card[data-status="over"]{animation:none}}
+.card-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.tname{font-family:var(--display);font-size:20px;font-weight:700;line-height:1.1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ttype{font-size:12px;color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+.ball{width:10px;height:10px;border-radius:50%;background:var(--ball-green);box-shadow:inset -2px -2px 3px rgba(0,0,0,.25),inset 1px 1px 2px rgba(255,255,255,.4);flex:none}
+[data-status="running"] .ball{background:var(--ball-blue)}
+[data-status="paused"] .ball{background:var(--ball-brown)}
+[data-status="warn"] .ball{background:var(--ball-yellow)}
+[data-status="over"] .ball{background:var(--ball-red)}
+.timer{font-family:var(--display);font-weight:700;font-size:34px;line-height:1;letter-spacing:.01em;font-variant-numeric:tabular-nums;margin-top:4px}
+.card[data-status="free"] .timer{color:var(--muted);font-size:26px;font-weight:600;padding-block:6px 0}
+.card[data-status="over"] .timer{color:var(--ball-red)}
+.meta{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font-size:12px;color:var(--muted);min-height:18px}
+.meta .amt{font-weight:700;color:var(--fg);font-size:15px}
+.who{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;min-height:17px}
+.who .nm{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.bar{height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ball-blue);border-radius:2px;transition:width .6s linear}
+[data-status="warn"] .bar i{background:var(--ball-yellow)}
+[data-status="over"] .bar i{background:var(--ball-red)}
+[data-status="paused"] .bar i{background:var(--ball-brown)}
+
+/* Tab bar */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);
+  padding-left:max(8px,var(--safe-area-inset-left,env(safe-area-inset-left,0px)));padding-right:max(8px,var(--safe-area-inset-right,env(safe-area-inset-right,0px)));padding-block:6px calc(6px + var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))}
+.tab{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;font-size:11px;font-weight:600;color:var(--muted);border-radius:10px;position:relative}
+.tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tab[aria-selected="true"]{color:var(--baize)}
+.tab[aria-selected="true"]::before{content:"";position:absolute;top:2px;width:44px;height:30px;border-radius:15px;background:var(--baize-soft);z-index:-1}
+.tab .badge{position:absolute;top:2px;left:calc(50% + 6px);background:var(--ball-red);color:#fff;font-size:10px;border-radius:9px;padding:0 5px;line-height:16px;min-width:16px;text-align:center}
+
+/* Generic UI */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 18px;border-radius:12px;font-weight:600;background:var(--surface-2);border:1px solid var(--line)}
+.btn.primary{background:var(--baize);color:var(--on-baize);border-color:transparent}
+.btn.danger{color:var(--ball-red)}
+.btn.warn{background:var(--ball-yellow);color:#1b1400;border-color:transparent}
+.btn.block{width:100%}
+.btn.sm{min-height:36px;padding:0 12px;font-size:13px;border-radius:10px}
+.btn[disabled]{opacity:.5}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>.btn{flex:1 1 0;min-width:0}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.field label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.input{width:100%;min-height:46px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);padding:0 14px;font-size:16px}
+textarea.input{padding:12px 14px;min-height:110px;font-size:13px;font-family:ui-monospace,Menlo,monospace}
+.seg{display:flex;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px}
+.seg button{flex:1;min-height:38px;padding:0 12px;border-radius:9px;font-weight:600;font-size:14px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--fg);box-shadow:var(--shadow)}
+.pills{display:flex;flex-wrap:wrap;gap:8px}
+.pill{min-height:38px;padding:0 14px;border-radius:19px;border:1px solid var(--line);background:var(--surface-2);font-weight:600;font-size:14px}
+.pill[aria-pressed="true"]{background:var(--baize);color:var(--on-baize);border-color:transparent}
+.list{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+.li{display:flex;align-items:center;gap:12px;padding:13px 14px;border-top:1px solid var(--line);width:100%;text-align:left;min-width:0}
+.li:first-child{border-top:0}
+.li .grow{flex:1;min-width:0}
+.li .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li .s{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li .v{font-weight:700;text-align:right;white-space:nowrap}
+.tag{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:2px 7px;border-radius:6px;background:var(--surface-2);color:var(--muted)}
+.tag.credit{background:var(--red-soft);color:var(--ball-red)}
+.tag.upi{background:var(--blue-soft);color:var(--ball-blue)}
+.tag.cash{background:var(--green-soft);color:var(--ball-green)}
+.tag.card{background:var(--brown-soft);color:var(--ball-brown)}
+.empty{text-align:center;color:var(--muted);padding:36px 16px;font-size:14px}
+.empty b{display:block;color:var(--fg);font-family:var(--display);font-size:20px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.group-h{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:18px 2px 8px}
+.toggle{width:46px;height:28px;border-radius:14px;background:var(--line);position:relative;flex:none;transition:background .2s}
+.toggle::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .2s}
+.toggle[aria-checked="true"]{background:var(--baize)}
+.toggle[aria-checked="true"]::after{transform:translateX(18px)}
+.stepper{display:inline-flex;align-items:center;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px}
+.stepper button{width:34px;height:34px;font-size:20px;font-weight:600;color:var(--baize)}
+.stepper span{min-width:22px;text-align:center;font-weight:700}
+
+/* KPIs and charts */
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media (min-width:640px){.kpis{grid-template-columns:repeat(3,1fr)}}
+.kpi{background:var(--surface);border-radius:var(--r);padding:12px 14px;box-shadow:var(--shadow);min-width:0}
+.kpi span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;font-weight:600}
+.kpi b{display:block;font-family:var(--display);font-size:28px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi small{color:var(--muted);font-size:12px}
+.kpi.hero{grid-column:1/-1;background:var(--baize);color:var(--on-baize)}
+.kpi.hero span,.kpi.hero small{color:inherit;opacity:.85}
+.kpi.hero b{font-size:40px}
+.panel{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:14px}
+.hbar{display:grid;grid-template-columns:minmax(70px,auto) 1fr auto;align-items:center;gap:10px;font-size:13px;margin:8px 0}
+.hbar .track{height:10px;background:var(--surface-2);border-radius:5px;overflow:hidden}
+.hbar .track i{display:block;height:100%;border-radius:5px;background:var(--baize)}
+.hbar .lbl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px}
+.hbar .val{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cols{display:flex;align-items:flex-end;gap:3px;height:120px;padding-top:8px;border-bottom:1px solid var(--line)}
+.cols div{flex:1;background:var(--baize);border-radius:3px 3px 0 0;min-height:2px;opacity:.9}
+.cols div.zero{background:var(--line)}
+.cols-x{display:flex;gap:3px;font-size:10px;color:var(--muted);margin-top:4px}
+.cols-x span{flex:1;text-align:center;font-variant-numeric:tabular-nums}
+
+/* Sheet */
+.scrim{position:fixed;inset:0;background:var(--scrim);z-index:40;opacity:0;transition:opacity .2s}
+.scrim.show{opacity:1}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;background:var(--surface);border-radius:20px 20px 0 0;max-height:92%;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .25s cubic-bezier(.2,.8,.2,1);max-width:640px;margin:0 auto;box-shadow:0 -8px 30px rgba(0,0,0,.2)}
+.sheet.show{transform:none}
+@media (prefers-reduced-motion:reduce){.sheet,.scrim{transition:none}}
+.sheet-h{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px max(16px,var(--safe-area-inset-right,env(safe-area-inset-right,0px))) 10px max(16px,var(--safe-area-inset-left,env(safe-area-inset-left,0px)));border-bottom:1px solid var(--line)}
+.sheet-h h3{margin:0;font-family:var(--display);font-size:22px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sheet-h .x{width:36px;height:36px;border-radius:18px;background:var(--surface-2);font-size:20px;line-height:1;flex:none}
+.sheet-b{overflow-y:auto;padding:16px max(16px,var(--safe-area-inset-right,env(safe-area-inset-right,0px))) calc(20px + var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px))) max(16px,var(--safe-area-inset-left,env(safe-area-inset-left,0px)))}
+.big-timer{font-family:var(--display);font-weight:700;font-size:64px;line-height:1;text-align:center;font-variant-numeric:tabular-nums}
+.big-sub{text-align:center;color:var(--muted);font-size:14px;margin:6px 0 14px}
+.sum{border-radius:12px;background:var(--surface-2);padding:4px 14px;margin-bottom:14px}
+.sum div{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px dashed var(--line);font-variant-numeric:tabular-nums}
+.sum div:first-child{border-top:0}
+.sum .tot{font-weight:700;font-size:18px;border-top:1px solid var(--line)}
+.items{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:12px}
+.item{text-align:left;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);min-width:0}
+.item b{display:block;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item span{font-size:13px;color:var(--muted)}
+.item.has{border-color:var(--baize);background:var(--baize-soft)}
+.receipt{background:var(--surface-2);border-radius:12px;padding:16px;font-size:14px;margin-bottom:14px}
+.receipt h4{font-family:var(--display);text-transform:uppercase;font-size:20px;margin:0;text-align:center;letter-spacing:.04em}
+.receipt .c{text-align:center;color:var(--muted);font-size:12px;margin-bottom:10px}
+.receipt .l{display:flex;justify-content:space-between;gap:10px;padding:4px 0;font-variant-numeric:tabular-nums}
+.receipt .l.tot{border-top:1px dashed var(--muted);margin-top:6px;padding-top:8px;font-weight:700;font-size:18px}
+.qr{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px;background:#fff;border-radius:12px;margin:0 auto 14px;width:fit-content;color:#111;font-size:12px}
+.qr svg{width:180px;height:180px}
+.note{font-size:13px;color:var(--muted);margin:-6px 0 14px}
+
+/* Alerts */
+.toasts{position:fixed;left:0;right:0;top:calc(var(--safe-area-inset-top,env(safe-area-inset-top,0px)) + 8px);z-index:60;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;padding-inline:max(12px,var(--safe-area-inset-left,env(safe-area-inset-left,0px))) max(12px,var(--safe-area-inset-right,env(safe-area-inset-right,0px)))}
+.toast{pointer-events:auto;width:100%;max-width:460px;background:var(--fg);color:var(--bg);border-radius:14px;padding:12px 14px;display:flex;gap:12px;align-items:center;box-shadow:0 8px 24px rgba(0,0,0,.25);animation:drop .25s ease-out}
+.toast .ball{width:14px;height:14px}
+.toast.warn .ball{background:var(--ball-yellow)} .toast.info .ball{background:var(--ball-blue)} .toast.ok .ball{background:var(--ball-green)}
+.toast b{display:block;font-size:14px}
+.toast span{font-size:13px;opacity:.8}
+@keyframes drop{from{transform:translateY(-16px);opacity:0}}
+.modal-wrap{position:fixed;inset:0;z-index:70;background:var(--scrim);display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:var(--surface);border-radius:20px;max-width:380px;width:100%;padding:22px 18px 18px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.35);animation:pop .25s ease-out}
+@keyframes pop{from{transform:scale(.92);opacity:0}}
+.modal .big-ball{width:56px;height:56px;border-radius:50%;margin:0 auto 10px;background:var(--ball-red);box-shadow:inset -8px -8px 14px rgba(0,0,0,.3),inset 6px 6px 10px rgba(255,255,255,.35)}
+.modal h3{font-family:var(--display);font-size:28px;text-transform:uppercase;margin:0;letter-spacing:.03em}
+.modal p{color:var(--muted);margin:4px 0 16px}
+.modal .row{margin-top:8px}
+</style>
+
+<header class="top" id="top"></header>
+<main id="main"></main>
+<nav class="tabs" id="tabs" role="tablist"></nav>
+<div class="scrim" id="scrim" hidden></div>
+<section class="sheet" id="sheet" hidden role="dialog" aria-modal="true"></section>
+<div class="toasts" id="toasts"></div>
+<div id="modals"></div>
+
+<script>
+(function(){
+"use strict";
+var KEY='cuezone.v1';
+var $=function(s,r){return (r||document).querySelector(s)};
+var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
+var CAP=window.Capacitor, NATIVE=!!(CAP&&CAP.isNativePlatform&&CAP.isNativePlatform());
+var LN=NATIVE&&CAP.Plugins?CAP.Plugins.LocalNotifications:null;
+var APP=NATIVE&&CAP.Plugins?CAP.Plugins.App:null;
+
+function uid(){return Math.random().toString(36).slice(2,10)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function pad(n){return (n<10?'0':'')+n}
+function clockStr(ms){ms=Math.max(0,ms);var s=Math.floor(ms/1000);return pad(Math.floor(s/3600))+':'+pad(Math.floor(s%3600/60))+':'+pad(s%60)}
+function durStr(ms){var m=Math.round(Math.max(0,ms)/60000);var h=Math.floor(m/60);m=m%60;return h?(h+' h '+m+' min'):(m+' min')}
+function money(n){n=Math.round(n||0);return S.settings.cur+n.toLocaleString('en-IN')}
+function timeStr(t){var d=new Date(t);var h=d.getHours(),m=d.getMinutes();var ap=h<12?'AM':'PM';h=h%12||12;return h+':'+pad(m)+' '+ap}
+function dateStr(t){return new Date(t).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}
+function dayKey(t){var d=new Date(t);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function startOfDay(t){var d=new Date(t);d.setHours(0,0,0,0);return d.getTime()}
+
+/* ---------- State ---------- */
+function defaults(){
+  var T=[['Snooker 1','Snooker',300,60],['Snooker 2','Snooker',300,60],['Snooker 3','Snooker',300,60],['Snooker 4','Snooker',300,60],['Pool 1','Pool',200,40],['Pool 2','Pool',200,40]];
+  var M=[['Tea',15,'Drinks'],['Coffee',25,'Drinks'],['Cold drink',40,'Drinks'],['Water bottle',20,'Drinks'],['Energy drink',110,'Drinks'],['Chips',20,'Snacks'],['Maggi',50,'Snacks'],['Sandwich',60,'Snacks']];
+  return {v:1,
+    settings:{club:'CueZone Snooker Club',cur:'₹',warnMin:5,remindEvery:60,sound:true,vibrate:true,notify:true,round:1,upi:'',bookedMin:true},
+    tables:T.map(function(t,i){return {id:uid(),nid:i+1,name:t[0],type:t[1],rate:t[2],minCharge:t[3],s:null}}),
+    menu:M.map(function(m){return {id:uid(),name:m[0],price:m[1],cat:m[2]}}),
+    bills:[],billNo:1001,nextNid:T.length+1,demo:false};
+}
+function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&o.v===1)return o}}catch(e){}return null}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+var S=load()||defaults();
+if(!load()&&window.CUEZONE_DEMO){seedDemo()}
+save();
+
+function seedDemo(){
+  var now=Date.now(),t=S.tables,m=S.menu;
+  function sess(mode,minsAgo,limit,cust,items){return {id:uid(),start:now-minsAgo*60000,pausedAt:null,pausedMs:0,mode:mode,limit:limit,customer:cust,phone:'',rate:0,minCharge:0,items:items||[],fired:{warn:false,end:false,rem:Math.floor(minsAgo/60)}}}
+  t[0].s=sess('open',72,0,'Imran & Sohail',[{mid:m[0].id,name:'Tea',price:15,qty:2},{mid:m[6].id,name:'Maggi',price:50,qty:1}]);
+  t[1].s=sess('fixed',57,60,'Aditya',[{mid:m[2].id,name:'Cold drink',price:40,qty:2}]);
+  t[3].s=sess('fixed',24,30,'Faizan');
+  t[4].s=sess('open',18,0,'Walk-in');
+  t.forEach(function(x){if(x.s){x.s.rate=x.rate;x.s.minCharge=x.minCharge;if(x.s.mode==='fixed'&&x.s.start+ x.s.limit*60000-(S.settings.warnMin*60000)<now)x.s.fired.warn=true}});
+  var pays=['Cash','UPI','UPI','Cash','Card','UPI','Credit','Cash'];
+  var names=['Rehan','Kunal','Arjun & Co','Sameer','Vikram','Ayaan','Danish','Rohit'];
+  var day0=startOfDay(now);
+  for(var d=0;d<7;d++){
+    var n=d===0?5:4+((d*3)%5);
+    for(var i=0;i<n;i++){
+      var tb=t[(i+d)%t.length];var play=(35+((i*23+d*11)%85))*60000;var st=d===0?now-(8+i*40)*60000-play:day0-d*86400000+(12+((i*2+d)%10))*3600000+((i*17)%60)*60000;var bm=Math.ceil(play/60000);var tc=Math.max(tb.minCharge,Math.round(tb.rate*bm/60));
+      var its=i%2?[{mid:m[i%m.length].id,name:m[i%m.length].name,price:m[i%m.length].price,qty:1+(i%3)}]:[];
+      var it=its.reduce(function(a,b){return a+b.price*b.qty},0);var disc=i%5===0?20:0;var pay=pays[(i+d)%pays.length];
+      S.bills.push({id:uid(),no:S.billNo++,table:tb.name,tableId:tb.id,type:tb.type,start:st,end:st+play,playMs:play,billedMin:bm,rate:tb.rate,mode:'open',limit:0,tableCharge:tc,items:its,itemsTotal:it,discount:disc,total:tc+it-disc,pay:pay,paid:pay!=='Credit',customer:names[(i+d)%names.length],phone:'',split:1});
+    }
+  }
+  S.bills.sort(function(a,b){return b.end-a.end});
+  S.demo=true;
+}
+
+/* ---------- Session maths ---------- */
+function elapsed(s,now){now=now||Date.now();return (s.pausedAt||now)-s.start-s.pausedMs}
+function remaining(s,now){return s.limit*60000-elapsed(s,now)}
+function statusOf(t,now){var s=t.s;if(!s)return 'free';if(s.pausedAt)return 'paused';if(s.mode==='fixed'){var r=remaining(s,now);if(r<=0)return 'over';if(r<=S.settings.warnMin*60000)return 'warn'}return 'running'}
+function billFor(t,endAt){
+  var s=t.s;var ms=endAt?((s.pausedAt||endAt)-s.start-s.pausedMs):elapsed(s);
+  var mins=ms/60000;var r=S.settings.round||1;var bm=Math.max(r,Math.ceil(mins/r-1e-9)*r);
+  if(s.mode==='fixed'&&S.settings.bookedMin)bm=Math.max(bm,s.limit);
+  var rate=s.rate||t.rate,minC=s.minCharge!=null?s.minCharge:t.minCharge;
+  var tc=Math.max(minC||0,Math.round(rate*bm/60));
+  var it=s.items.reduce(function(a,b){return a+b.price*b.qty},0);
+  return {ms:ms,billedMin:bm,rate:rate,tableCharge:tc,itemsTotal:it,total:tc+it};
+}
+var STATUS_LABEL={free:'Free',running:'Playing',paused:'Paused',warn:'Ending',over:'Time up'};
+
+/* ---------- Sound, vibration, notifications ---------- */
+var AC=null;
+function unlockAudio(){try{if(!AC){var C=window.AudioContext||window.webkitAudioContext;if(C)AC=new C()}if(AC&&AC.state==='suspended')AC.resume()}catch(e){}}
+document.addEventListener('pointerdown',unlockAudio,{passive:true});
+function beep(kind){
+  if(!S.settings.sound||!AC)return;
+  var seq=kind==='end'?[880,0,880,0,880,0,1175]:kind==='warn'?[660,0,880]:[740];
+  var t=AC.currentTime+.02;
+  seq.forEach(function(f){if(f){var o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(.35,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+.22);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+.25)}t+=.18});
+}
+function buzz(kind){if(S.settings.vibrate&&navigator.vibrate){try{navigator.vibrate(kind==='end'?[400,150,400,150,600]:[250,120,250])}catch(e){}}}
+function webNotify(title,body){
+  if(NATIVE||!S.settings.notify||!('Notification' in window))return;
+  try{if(Notification.permission==='granted'&&document.hidden)new Notification(title,{body:body,tag:title})}catch(e){}
+}
+function nidBase(t){return (t.nid||1)*100}
+function cancelNative(t){
+  if(!LN)return;var ids=[];for(var k=0;k<20;k++)ids.push({id:nidBase(t)+k});
+  LN.cancel({notifications:ids}).catch(function(){});
+}
+function scheduleNative(t){
+  if(!LN)return;cancelNative(t);
+  var s=t.s;if(!s||s.pausedAt||!S.settings.notify)return;
+  var now=Date.now(),list=[],base=nidBase(t);
+  function add(id,at,title,body){if(at>now+1000)list.push({id:id,title:title,body:body,channelId:'cuezone-alerts',schedule:{at:new Date(at),allowWhileIdle:true},extra:{table:t.id}})}
+  var who=s.customer?(' · '+s.customer):'';
+  if(s.mode==='fixed'){
+    var rem=remaining(s,now);
+    if(S.settings.warnMin>0)add(base+1,now+rem-S.settings.warnMin*60000,t.name+': '+S.settings.warnMin+' min left','Booked '+s.limit+' min'+who);
+    add(base+2,now+rem,'Time up on '+t.name,'The '+s.limit+' min game has ended'+who+'. Extend or bill.');
+  }else if(S.settings.remindEvery>0){
+    var every=S.settings.remindEvery*60000,el=elapsed(s,now),next=(Math.floor(el/every)+1)*every;
+    for(var k=0;k<8;k++){add(base+10+k,now+(next+k*every-el),t.name+' running '+durStr(next+k*every),'Open game'+who+' · '+money(billFor(t).total)+' so far at last check')}
+  }
+  if(list.length)LN.schedule({notifications:list}).catch(function(){});
+}
+function initNative(){
+  if(!LN)return;
+  LN.createChannel({id:'cuezone-alerts',name:'Table alerts',description:'Time up and reminder alerts',importance:5,visibility:1,vibration:true,lights:true,lightColor:'#0B6B4C'}).catch(function(){});
+  LN.checkPermissions().then(function(p){if(p.display!=='granted')return LN.requestPermissions()}).catch(function(){});
+  LN.addListener('localNotificationActionPerformed',function(a){var id=a&&a.notification&&a.notification.extra&&a.notification.extra.table;if(id){setTab('tables');openTable(id)}});
+  S.tables.forEach(scheduleNative);
+  if(APP){APP.addListener('backButton',function(){
+    if($('.modal-wrap'))return closeModal();
+    if(!$('#sheet').hidden)return closeSheet();
+    if(tab!=='tables')return setTab('tables');
+    APP.minimizeApp();
+  });
+  APP.addListener('appStateChange',function(st){if(st.isActive){tick(true)}});}
+}
+
+/* ---------- Toasts and modals ---------- */
+function toast(kind,title,body,tid){
+  var el=document.createElement('button');el.className='toast '+kind;
+  el.innerHTML='<i class="ball"></i><div style="text-align:left;min-width:0"><b>'+esc(title)+'</b>'+(body?'<span>'+esc(body)+'</span>':'')+'</div>';
+  el.onclick=function(){el.remove();if(tid){setTab('tables');openTable(tid)}};
+  $('#toasts').appendChild(el);setTimeout(function(){el.remove()},kind==='ok'?2600:9000);
+}
+var modalOpenFor=null;
+function closeModal(){$('#modals').innerHTML='';modalOpenFor=null}
+function timeUpModal(t){
+  if(modalOpenFor===t.id)return;modalOpenFor=t.id;
+  var s=t.s;
+  $('#modals').innerHTML='<div class="modal-wrap"><div class="modal" role="alertdialog" aria-labelledby="mh"><div class="big-ball"></div><h3 id="mh">Time up · '+esc(t.name)+'</h3><p>'+esc((s.customer?s.customer+' · ':'')+s.limit+' min booked')+'<br><span class="num" data-tid="'+t.id+'" data-k="over">Over by 00:00:00</span></p>'+
+  '<div class="row"><button class="btn" data-ext="15">+15 min</button><button class="btn" data-ext="30">+30 min</button><button class="btn" data-ext="60">+1 hr</button></div>'+
+  '<div class="row"><button class="btn primary" id="m-bill">Stop &amp; bill</button></div><div class="row"><button class="btn" id="m-dismiss">Dismiss</button></div></div></div>';
+  $$('#modals [data-ext]').forEach(function(b){b.onclick=function(){extend(t,+b.dataset.ext);closeModal();toast('ok','Extended '+t.name,'+'+b.dataset.ext+' min added')}});
+  $('#m-bill').onclick=function(){closeModal();checkout(t.id)};
+  $('#m-dismiss').onclick=closeModal;
+}
+
+/* ---------- Ticker ---------- */
+function tick(force){
+  var now=Date.now(),dirty=false;
+  S.tables.forEach(function(t){
+    var s=t.s;if(!s)return;var st=statusOf(t,now);
+    if(!s.pausedAt){
+      if(s.mode==='fixed'){
+        if(st==='warn'&&!s.fired.warn&&S.settings.warnMin>0){s.fired.warn=true;dirty=true;beep('warn');buzz('warn');toast('warn',S.settings.warnMin+' min left on '+t.name,s.customer||'Tap to open the table',t.id);webNotify(t.name+': '+S.settings.warnMin+' min left',s.customer||'')}
+        if(st==='over'&&!s.fired.end){s.fired.end=true;s.fired.warn=true;dirty=true;beep('end');buzz('end');timeUpModal(t);webNotify('Time up on '+t.name,'Extend or bill the game')}
+      }else if(S.settings.remindEvery>0){
+        var n=Math.floor(elapsed(s,now)/(S.settings.remindEvery*60000));
+        if(n>(s.fired.rem||0)){s.fired.rem=n;dirty=true;beep('remind');toast('info',t.name+' has run '+durStr(n*S.settings.remindEvery*60000),'Running bill '+money(billFor(t).total),t.id);webNotify(t.name+' running '+durStr(n*S.settings.remindEvery*60000),'')}
+      }
+    }
+    // live DOM
+    $$('[data-tid="'+t.id+'"]').forEach(function(el){
+      var k=el.dataset.k;
+      if(k==='card'){if(el.dataset.status!==st)el.dataset.status=st}
+      else if(k==='clock'){el.textContent=s.mode==='fixed'&&st!=='over'?clockStr(remaining(s,now)):clockStr(st==='over'?-remaining(s,now):elapsed(s,now))}
+      else if(k==='label'){el.textContent=STATUS_LABEL[st]}
+      else if(k==='amt'){el.textContent=money(billFor(t).total)}
+      else if(k==='sub'){el.textContent=subLine(t,st,now)}
+      else if(k==='bar'){el.style.width=barPct(t,now)+'%'}
+      else if(k==='elapsed'){el.textContent=clockStr(elapsed(s,now))}
+      else if(k==='tc'){el.textContent=money(billFor(t).tableCharge)}
+      else if(k==='over'){el.textContent='Over by '+clockStr(-remaining(s,now))}
+    });
+  });
+  var c=$('#clock');if(c)c.textContent=timeStr(now);
+  if(dirty)save();
+  if(force)renderTop();
+}
+function subLine(t,st,now){var s=t.s;if(st==='paused')return 'Paused at '+clockStr(elapsed(s,now));if(s.mode==='fixed')return st==='over'?'Over · '+s.limit+' min booked':'Left of '+s.limit+' min';return 'Open time'}
+function barPct(t,now){var s=t.s;if(s.mode==='fixed')return Math.min(100,elapsed(s,now)/(s.limit*60000)*100);var e=S.settings.remindEvery||60;return (elapsed(s,now)%(e*60000))/(e*60000)*100}
+
+/* ---------- Render: chrome ---------- */
+var tab='tables';
+var ICONS={
+ tables:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="3.5" cy="5.5" r="1.2"/><circle cx="20.5" cy="5.5" r="1.2"/><circle cx="3.5" cy="18.5" r="1.2"/><circle cx="20.5" cy="18.5" r="1.2"/><circle cx="12" cy="12" r="2"/></svg>',
+ bills:'<svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>',
+ reports:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
+ settings:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>'};
+function renderTabs(){
+  var credit=S.bills.filter(function(b){return !b.paid}).length;
+  $('#tabs').innerHTML=[['tables','Tables'],['bills','Bills'],['reports','Reports'],['settings','Settings']].map(function(x){
+    return '<button class="tab" role="tab" aria-selected="'+(tab===x[0])+'" data-tab="'+x[0]+'">'+ICONS[x[0]]+x[1]+(x[0]==='bills'&&credit?'<span class="badge">'+credit+'</span>':'')+'</button>'}).join('');
+  $$('#tabs [data-tab]').forEach(function(b){b.onclick=function(){setTab(b.dataset.tab)}});
+}
+function todaysBills(){var d0=startOfDay(Date.now());return S.bills.filter(function(b){return b.end>=d0})}
+function renderTop(){
+  var playing=S.tables.filter(function(t){return t.s}).length;
+  var takings=todaysBills().reduce(function(a,b){return a+(b.paid?b.total:0)},0);
+  $('#top').innerHTML='<div class="top-row"><div class="club">'+esc(S.settings.club)+'</div><div class="clock num" id="clock">'+timeStr(Date.now())+'</div></div>'+
+   '<div class="top-sub">'+new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'})+'</div>'+
+   '<div class="stats"><div class="stat"><b class="num">'+playing+'</b><span>Playing</span></div><div class="stat"><b class="num">'+(S.tables.length-playing)+'</b><span>Free</span></div><div class="stat"><b class="num">'+money(takings)+'</b><span>Today</span></div></div>';
+}
+function setTab(t){tab=t;closeSheet();render();window.scrollTo(0,0)}
+function render(){renderTop();renderTabs();({tables:renderTables,bills:renderBills,reports:renderReports,settings:renderSettings})[tab]();tick()}
+
+/* ---------- Tables view ---------- */
+function renderTables(){
+  var now=Date.now();
+  var h=S.demo?'<div class="demo-note"><span>Sample games and bills are loaded so you can try things out.</span><button id="clear-demo">Clear sample data</button></div>':'';
+  h+='<div class="section-h"><h2>Tables</h2><small>Tap a table to manage it</small></div><div class="grid">';
+  S.tables.forEach(function(t){
+    var st=statusOf(t,now);
+    if(!t.s){h+='<button class="card" data-status="free" data-tid="'+t.id+'" data-k="card" data-open="'+t.id+'"><div class="tname">'+esc(t.name)+'</div><div class="who"><span class="chip"><i class="ball"></i><span data-tid="'+t.id+'" data-k="label">Free</span></span><span class="nm">'+money(t.rate)+'/hr</span></div><div class="timer">Start</div><div class="meta"><span>Tap to start a game</span></div></button>';return}
+    h+='<button class="card" data-status="'+st+'" data-tid="'+t.id+'" data-k="card" data-open="'+t.id+'"><div class="tname">'+esc(t.name)+'</div>'+
+     '<div class="who"><span class="chip"><i class="ball"></i><span data-tid="'+t.id+'" data-k="label">'+STATUS_LABEL[st]+'</span></span><span class="nm">'+(t.s.customer?'· '+esc(t.s.customer):'')+'</span></div>'+
+     '<div class="timer" data-tid="'+t.id+'" data-k="clock">00:00:00</div>'+
+     '<div class="meta"><span data-tid="'+t.id+'" data-k="sub"></span><span class="amt num" data-tid="'+t.id+'" data-k="amt"></span></div>'+
+     '<div class="bar"><i data-tid="'+t.id+'" data-k="bar" style="width:'+barPct(t,now)+'%"></i></div></button>';
+  });
+  h+='</div>';
+  $('#main').innerHTML=h;
+  $$('#main [data-open]').forEach(function(b){b.onclick=function(){openTable(b.dataset.open)}});
+  var cd=$('#clear-demo');if(cd)cd.onclick=function(){S.tables.forEach(function(t){t.s=null;cancelNative(t)});S.bills=[];S.billNo=1001;S.demo=false;save();render();toast('ok','Sample data cleared','Your tables and menu are kept')};
+}
+function T(id){for(var i=0;i<S.tables.length;i++)if(S.tables[i].id===id)return S.tables[i];return null}
+
+/* ---------- Sheet ---------- */
+var sheetFor=null;
+function openSheet(title,body,onMount,owner){
+  var sh=$('#sheet'),sc=$('#scrim');sheetFor=owner||null;
+  sh.innerHTML='<div class="sheet-h"><h3>'+title+'</h3><button class="x" aria-label="Close" id="sx">×</button></div><div class="sheet-b" id="sb">'+body+'</div>';
+  sh.hidden=false;sc.hidden=false;requestAnimationFrame(function(){sh.classList.add('show');sc.classList.add('show')});
+  $('#sx').onclick=closeSheet;sc.onclick=closeSheet;if(onMount)onMount(sh);tick();
+}
+function closeSheet(){var sh=$('#sheet'),sc=$('#scrim');sheetFor=null;sh.classList.remove('show');sc.classList.remove('show');setTimeout(function(){if(!sh.classList.contains('show')){sh.hidden=true;sc.hidden=true;sh.innerHTML=''}},250)}
+function bindSeg(root,sel,cb){$$(sel+' button',root).forEach(function(b){b.onclick=function(){$$(sel+' button',root).forEach(function(x){x.setAttribute('aria-pressed',x===b)});cb(b.dataset.v)}})}
+
+function openTable(id){var t=T(id);if(!t)return;if(t.s)return runningSheet(t);startSheet(t)}
+function startSheet(t){
+  var mode='open',mins=60;
+  var body='<div class="field"><label for="f-cust">Player or group name</label><input class="input" id="f-cust" placeholder="Optional, e.g. Rahul &amp; friends" autocomplete="off"></div>'+
+   '<div class="field"><label for="f-phone">Phone</label><input class="input" id="f-phone" type="tel" inputmode="tel" placeholder="Optional, for WhatsApp bill"></div>'+
+   '<div class="field"><label>Game type</label><div class="seg" id="f-mode"><button data-v="open" aria-pressed="true">Open time</button><button data-v="fixed" aria-pressed="false">Fixed time</button></div></div>'+
+   '<p class="note" id="f-mode-note">Timer counts up. Stop whenever the players finish.</p>'+
+   '<div id="f-fixed" hidden><div class="field"><label>Book for</label><div class="pills" id="f-mins">'+[30,45,60,90,120].map(function(m){return '<button class="pill" data-v="'+m+'" aria-pressed="'+(m===60)+'">'+(m<60?m+' min':(m/60)+' hr')+'</button>'}).join('')+'</div></div>'+
+   '<div class="field"><label for="f-custom">Or custom minutes</label><input class="input" id="f-custom" inputmode="numeric" placeholder="e.g. 75"></div></div>'+
+   '<div class="sum"><div><span>Rate</span><span>'+money(t.rate)+' per hour</span></div><div><span>Minimum charge</span><span>'+money(t.minCharge)+'</span></div><div id="f-est" hidden><span>Booked amount</span><b></b></div></div>'+
+   '<button class="btn primary block" id="f-go">Start '+esc(t.name)+'</button>';
+  openSheet(esc(t.name)+' · '+esc(t.type),body,function(sh){
+    function est(){var e=$('#f-est',sh);e.hidden=mode!=='fixed';$('b',e).textContent=money(Math.max(t.minCharge,Math.round(t.rate*mins/60)))}
+    bindSeg(sh,'#f-mode',function(v){mode=v;$('#f-fixed',sh).hidden=v!=='fixed';$('#f-mode-note',sh).textContent=v==='fixed'?'Timer counts down. You get an alert '+S.settings.warnMin+' min before and when time is up.':'Timer counts up. Stop whenever the players finish.';est()});
+    $$('#f-mins .pill',sh).forEach(function(b){b.onclick=function(){$$('#f-mins .pill',sh).forEach(function(x){x.setAttribute('aria-pressed',x===b)});mins=+b.dataset.v;$('#f-custom',sh).value='';est()}});
+    $('#f-custom',sh).oninput=function(){var v=parseInt(this.value,10);if(v>0){mins=v;$$('#f-mins .pill',sh).forEach(function(x){x.setAttribute('aria-pressed','false')})}est()};
+    $('#f-go',sh).onclick=function(){
+      unlockAudio();
+      t.s={id:uid(),start:Date.now(),pausedAt:null,pausedMs:0,mode:mode,limit:mode==='fixed'?mins:0,customer:$('#f-cust',sh).value.trim(),phone:$('#f-phone',sh).value.trim(),rate:t.rate,minCharge:t.minCharge,items:[],fired:{warn:false,end:false,rem:0}};
+      save();scheduleNative(t);closeSheet();render();toast('ok',t.name+' started',mode==='fixed'?mins+' min booked':'Open time');
+    };
+  },t.id);
+}
+function runningSheet(t){
+  var s=t.s,st=statusOf(t);
+  var itemsHtml=s.items.length?'<div class="list" style="margin-bottom:12px">'+s.items.map(function(it,i){return '<div class="li"><div class="grow"><div class="t">'+esc(it.name)+'</div><div class="s">'+money(it.price)+' each</div></div><div class="stepper"><button data-dec="'+i+'" aria-label="Remove one">−</button><span>'+it.qty+'</span><button data-inc="'+i+'" aria-label="Add one">+</button></div><div class="v num" style="min-width:56px">'+money(it.price*it.qty)+'</div></div>'}).join('')+'</div>':'';
+  var body='<div class="big-timer" data-tid="'+t.id+'" data-k="clock">00:00:00</div><div class="big-sub" data-tid="'+t.id+'" data-k="sub"></div>'+
+   '<div class="sum"><div><span>Player</span><span>'+esc(s.customer||'Walk-in')+'</span></div><div><span>Started</span><span>'+timeStr(s.start)+'</span></div><div><span>Played</span><span class="num" data-tid="'+t.id+'" data-k="elapsed"></span></div><div><span>Table charge ('+money(s.rate)+'/hr)</span><span class="num" data-tid="'+t.id+'" data-k="tc"></span></div><div><span>Canteen</span><span class="num">'+money(billFor(t).itemsTotal)+'</span></div><div class="tot"><span>Running bill</span><span class="num" data-tid="'+t.id+'" data-k="amt"></span></div></div>'+
+   '<div class="row" style="margin-bottom:10px"><button class="btn" id="r-pause">'+(s.pausedAt?'Resume':'Pause')+'</button>'+(s.mode==='fixed'?'<button class="btn" data-ext="15">+15 min</button><button class="btn" data-ext="30">+30 min</button>':'<button class="btn" id="r-limit">Set time limit</button>')+'</div>'+
+   '<div class="group-h">Canteen</div>'+itemsHtml+
+   '<div class="items" id="r-menu">'+S.menu.map(function(m){var q=0;s.items.forEach(function(it){if(it.mid===m.id)q=it.qty});return '<button class="item'+(q?' has':'')+'" data-add="'+m.id+'"><b>'+esc(m.name)+(q?' ×'+q:'')+'</b><span>'+money(m.price)+'</span></button>'}).join('')+'</div>'+
+   '<button class="btn primary block" id="r-bill" style="margin-top:6px">Stop &amp; bill</button>'+
+   '<div class="row" style="margin-top:10px"><button class="btn" id="r-move">Move table</button><button class="btn danger" id="r-cancel">Cancel game</button></div>';
+  openSheet(esc(t.name)+' · <span style="color:var(--muted)">'+STATUS_LABEL[st]+'</span>',body,function(sh){
+    $('#r-pause',sh).onclick=function(){if(s.pausedAt){s.pausedMs+=Date.now()-s.pausedAt;s.pausedAt=null}else{s.pausedAt=Date.now()}save();scheduleNative(t);runningSheet(t);renderMainOnly()};
+    $$('[data-ext]',sh).forEach(function(b){b.onclick=function(){extend(t,+b.dataset.ext);runningSheet(t);toast('ok','Extended '+t.name,'+'+b.dataset.ext+' min added')}});
+    var lim=$('#r-limit',sh);if(lim)lim.onclick=function(){limitSheet(t)};
+    $$('[data-add]',sh).forEach(function(b){b.onclick=function(){var m=S.menu.filter(function(x){return x.id===b.dataset.add})[0];var f=s.items.filter(function(x){return x.mid===m.id})[0];if(f)f.qty++;else s.items.push({mid:m.id,name:m.name,price:m.price,qty:1});save();runningSheet(t);renderMainOnly()}});
+    $$('[data-inc]',sh).forEach(function(b){b.onclick=function(){s.items[+b.dataset.inc].qty++;save();runningSheet(t);renderMainOnly()}});
+    $$('[data-dec]',sh).forEach(function(b){b.onclick=function(){var it=s.items[+b.dataset.dec];it.qty--;if(it.qty<=0)s.items.splice(+b.dataset.dec,1);save();runningSheet(t);renderMainOnly()}});
+    $('#r-bill',sh).onclick=function(){checkout(t.id)};
+    $('#r-move',sh).onclick=function(){moveSheet(t)};
+    var armed=false;$('#r-cancel',sh).onclick=function(){if(!armed){armed=true;this.textContent='Tap again to discard';return}cancelNative(t);t.s=null;save();closeSheet();render();toast('ok','Game cancelled',t.name+' is free')};
+    var sb=$('#sb');sb.scrollTop=keepScroll;keepScroll=0;
+  },t.id);
+}
+var keepScroll=0;
+function renderMainOnly(){keepScroll=$('#sb')?$('#sb').scrollTop:0;if(tab==='tables'){renderTables();tick()}renderTop()}
+function extend(t,m){var s=t.s;if(!s)return;if(s.mode!=='fixed'){s.mode='fixed';s.limit=Math.ceil(elapsed(s)/60000)}s.limit+=m;s.fired.end=remaining(s)<=0;s.fired.warn=remaining(s)<=S.settings.warnMin*60000;save();scheduleNative(t);if(tab==='tables'){renderTables();tick()}}
+function limitSheet(t){
+  var s=t.s,cur=Math.ceil(elapsed(s)/60000);
+  openSheet('Time limit · '+esc(t.name),'<p class="note" style="margin-top:0">Played '+cur+' min so far. Pick the total time for this game; the timer switches to a countdown and alerts when it ends.</p><div class="pills" id="l-p">'+[30,60,90,120,180].filter(function(m){return m>cur}).map(function(m){return '<button class="pill" data-v="'+m+'">'+(m<60?m+' min':(m/60)+' hr')+' total</button>'}).join('')+'</div>',function(sh){
+    $$('#l-p .pill',sh).forEach(function(b){b.onclick=function(){s.mode='fixed';s.limit=+b.dataset.v;s.fired.end=false;s.fired.warn=remaining(s)<=S.settings.warnMin*60000;save();scheduleNative(t);runningSheet(t);renderMainOnly()}});
+  },t.id);
+}
+function moveSheet(t){
+  var free=S.tables.filter(function(x){return !x.s});
+  openSheet('Move '+esc(t.name)+' to',free.length?'<div class="list">'+free.map(function(f){return '<button class="li" data-to="'+f.id+'"><div class="grow"><div class="t">'+esc(f.name)+'</div><div class="s">'+esc(f.type)+'</div></div><span class="s">Keeps '+money(t.s.rate)+'/hr</span></button>'}).join('')+'</div>':'<div class="empty"><b>No free table</b>Every table is in use right now.</div>',function(sh){
+    $$('[data-to]',sh).forEach(function(b){b.onclick=function(){var to=T(b.dataset.to);cancelNative(t);to.s=t.s;t.s=null;save();scheduleNative(to);closeSheet();render();toast('ok','Moved to '+to.name,'Timer and canteen items kept')}});
+  });
+}
+
+/* ---------- Checkout ---------- */
+function checkout(id){
+  var t=T(id);if(!t||!t.s)return;var s=t.s,endAt=Date.now(),b=billFor(t,endAt);
+  var disc=0,discMode='amt',split=1,pay='Cash';
+  var body='<div class="sum"><div><span>'+esc(t.name)+' · '+timeStr(s.start)+' – '+timeStr(endAt)+'</span><span></span></div>'+
+   '<div><span>Time played</span><span class="num">'+durStr(b.ms)+'</span></div>'+
+   '<div><span>Billed '+b.billedMin+' min × '+money(b.rate)+'/hr'+(s.mode==='fixed'&&S.settings.bookedMin&&b.billedMin===s.limit?' (booked)':'')+'</span><span class="num">'+money(b.tableCharge)+'</span></div>'+
+   s.items.map(function(it){return '<div><span>'+esc(it.name)+' × '+it.qty+'</span><span class="num">'+money(it.price*it.qty)+'</span></div>'}).join('')+
+   '<div id="c-disc-row" hidden><span>Discount</span><span class="num" id="c-disc-v"></span></div><div class="tot"><span>Total</span><span class="num" id="c-total"></span></div><div id="c-split-row" hidden><span>Each of <span id="c-split-n"></span> pays</span><span class="num" id="c-split-v"></span></div></div>'+
+   '<div class="field"><label for="c-disc">Discount</label><div class="row" style="flex-wrap:nowrap"><input class="input" id="c-disc" inputmode="decimal" placeholder="0" style="flex:1"><div class="seg" id="c-dmode" style="flex:none"><button data-v="amt" aria-pressed="true">'+esc(S.settings.cur)+'</button><button data-v="pct" aria-pressed="false">%</button></div></div></div>'+
+   '<div class="field"><label>Split between players</label><div><span class="stepper"><button id="c-sm" aria-label="Fewer players">−</button><span id="c-sn">1</span><button id="c-sp" aria-label="More players">+</button></span></div></div>'+
+   '<div class="field"><label>Payment</label><div class="pills" id="c-pay">'+['Cash','UPI','Card','Credit'].map(function(p){return '<button class="pill" data-v="'+p+'" aria-pressed="'+(p==='Cash')+'">'+(p==='Credit'?'Credit (khata)':p)+'</button>'}).join('')+'</div></div>'+
+   '<div id="c-qr"></div>'+
+   '<div class="field" id="c-name-f"><label for="c-name">Customer name</label><input class="input" id="c-name" value="'+esc(s.customer)+'" placeholder="Needed for credit"></div>'+
+   '<div class="field"><label for="c-phone">Phone</label><input class="input" id="c-phone" type="tel" inputmode="tel" value="'+esc(s.phone)+'" placeholder="For the WhatsApp bill"></div>'+
+   '<button class="btn primary block" id="c-save">Save bill</button>';
+  openSheet('Bill · '+esc(t.name),body,function(sh){
+    function total(){var d=parseFloat($('#c-disc',sh).value)||0;disc=discMode==='pct'?Math.round(b.total*Math.min(d,100)/100):Math.min(d,b.total);return Math.max(0,Math.round(b.total-disc))}
+    function upd(){var tot=total();$('#c-disc-row',sh).hidden=!disc;$('#c-disc-v',sh).textContent='−'+money(disc);$('#c-total',sh).textContent=money(tot);
+      $('#c-split-row',sh).hidden=split<2;$('#c-split-n',sh).textContent=split;$('#c-split-v',sh).textContent=money(Math.ceil(tot/split));$('#c-sn',sh).textContent=split;
+      $('#c-save',sh).textContent=pay==='Credit'?'Save to khata · '+money(tot):'Collect '+money(tot)+' · '+pay;
+      $('#c-qr',sh).innerHTML=pay==='UPI'?upiQr(tot,split>1?Math.ceil(tot/split):0):'';}
+    $('#c-disc',sh).oninput=upd;
+    bindSeg(sh,'#c-dmode',function(v){discMode=v;upd()});
+    $('#c-sm',sh).onclick=function(){split=Math.max(1,split-1);upd()};$('#c-sp',sh).onclick=function(){split=Math.min(20,split+1);upd()};
+    $$('#c-pay .pill',sh).forEach(function(p){p.onclick=function(){$$('#c-pay .pill',sh).forEach(function(x){x.setAttribute('aria-pressed',x===p)});pay=p.dataset.v;upd()}});
+    $('#c-save',sh).onclick=function(){
+      var name=$('#c-name',sh).value.trim();
+      if(pay==='Credit'&&!name){$('#c-name',sh).focus();toast('warn','Add the customer name','Credit bills need a name to collect later');return}
+      var tot=total();
+      var bill={id:uid(),no:S.billNo++,table:t.name,tableId:t.id,type:t.type,start:s.start,end:endAt,playMs:b.ms,billedMin:b.billedMin,rate:b.rate,mode:s.mode,limit:s.limit,tableCharge:b.tableCharge,items:s.items.map(function(x){return {name:x.name,price:x.price,qty:x.qty}}),itemsTotal:b.itemsTotal,discount:disc,total:tot,pay:pay,paid:pay!=='Credit',customer:name,phone:$('#c-phone',sh).value.trim(),split:split};
+      S.bills.unshift(bill);cancelNative(t);t.s=null;save();
+      if(modalOpenFor===t.id)closeModal();
+      render();receiptSheet(bill,true);
+    };
+    upd();
+  },t.id);
+}
+function upiQr(amount,each){
+  if(!S.settings.upi)return '<p class="note">Add your UPI ID in Settings to show a payment QR with the amount filled in.</p>';
+  if(typeof window.qrcode!=='function')return '';
+  var link='upi://pay?pa='+encodeURIComponent(S.settings.upi)+'&pn='+encodeURIComponent(S.settings.club)+'&am='+amount+'&cu=INR&tn='+encodeURIComponent('Table bill');
+  try{var q=window.qrcode(0,'M');q.addData(link);q.make();return '<div class="qr">'+q.createSvgTag({cellSize:4,margin:2,scalable:true})+'<b>Scan to pay '+money(amount)+'</b><span>'+esc(S.settings.upi)+'</span></div>'}catch(e){return ''}
+}
+function billText(b){
+  var L=['*'+S.settings.club+'*','Bill #'+b.no+' · '+dateStr(b.end),b.table+' · '+timeStr(b.start)+' – '+timeStr(b.end),'Table time: '+durStr(b.playMs)+' (billed '+b.billedMin+' min @ '+money(b.rate)+'/hr) = '+money(b.tableCharge)];
+  b.items.forEach(function(it){L.push(it.name+' × '+it.qty+' = '+money(it.price*it.qty))});
+  if(b.discount)L.push('Discount −'+money(b.discount));
+  L.push('*Total: '+money(b.total)+'*');
+  if(b.split>1)L.push('Split '+b.split+' ways: '+money(Math.ceil(b.total/b.split))+' each');
+  L.push(b.paid?('Paid by '+b.pay):'Added to credit (khata) — please pay at the counter');
+  if(S.settings.upi&&!b.paid)L.push('UPI: '+S.settings.upi);
+  L.push('Thank you for playing!');
+  return L.join('\n');
+}
+function waLink(b){var p=(b.phone||'').replace(/\D/g,'');if(p.length===10)p='91'+p;return 'https://wa.me/'+(p||'')+'?text='+encodeURIComponent(billText(b))}
+function openExternal(url){if(NATIVE){window.location.href=url}else{var a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove()}}
+function copyText(txt,label){
+  function ok(){toast('ok',label||'Copied','')}
+  function fallback(){var ta=document.createElement('textarea');ta.value=txt;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');ok()}catch(e){toast('warn','Copy failed','Select the text and copy it manually')}ta.remove()}
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(ok,fallback)}else fallback();
+}
+function receiptSheet(b,fresh){
+  var body='<div class="receipt"><h4>'+esc(S.settings.club)+'</h4><div class="c">Bill #'+b.no+' · '+dateStr(b.end)+'</div>'+
+   '<div class="l"><span>'+esc(b.table)+'</span><span>'+timeStr(b.start)+' – '+timeStr(b.end)+'</span></div>'+
+   (b.customer?'<div class="l"><span>Customer</span><span>'+esc(b.customer)+'</span></div>':'')+
+   '<div class="l"><span>Table · '+durStr(b.playMs)+'</span><span>'+money(b.tableCharge)+'</span></div>'+
+   b.items.map(function(it){return '<div class="l"><span>'+esc(it.name)+' × '+it.qty+'</span><span>'+money(it.price*it.qty)+'</span></div>'}).join('')+
+   (b.discount?'<div class="l"><span>Discount</span><span>−'+money(b.discount)+'</span></div>':'')+
+   '<div class="l tot"><span>Total</span><span>'+money(b.total)+'</span></div>'+
+   (b.split>1?'<div class="l"><span>Split '+b.split+' ways</span><span>'+money(Math.ceil(b.total/b.split))+' each</span></div>':'')+
+   '<div class="l"><span>Payment</span><span><span class="tag '+b.pay.toLowerCase()+'">'+(b.paid?b.pay:'Credit due')+'</span></span></div></div>'+
+   '<div class="row"><button class="btn primary" id="rc-wa">Send on WhatsApp</button><button class="btn" id="rc-copy">Copy bill</button></div>'+
+   (!b.paid?'<div class="group-h">Collect credit</div><div class="row">'+['Cash','UPI','Card'].map(function(p){return '<button class="btn" data-paid="'+p+'">Paid by '+p+'</button>'}).join('')+'</div>':'')+
+   (!fresh?'<div class="row" style="margin-top:10px"><button class="btn danger" id="rc-del">Delete bill</button></div>':'');
+  openSheet(fresh?'Bill saved':'Bill #'+b.no,body,function(sh){
+    $('#rc-wa',sh).onclick=function(){openExternal(waLink(b))};
+    $('#rc-copy',sh).onclick=function(){copyText(billText(b),'Bill copied')};
+    $$('[data-paid]',sh).forEach(function(x){x.onclick=function(){b.paid=true;b.pay=x.dataset.paid;b.paidAt=Date.now();save();render();receiptSheet(b);toast('ok','Credit collected',money(b.total)+' by '+b.pay)}});
+    var d=$('#rc-del',sh),armed=false;if(d)d.onclick=function(){if(!armed){armed=true;d.textContent='Tap again to delete';return}S.bills=S.bills.filter(function(x){return x.id!==b.id});save();closeSheet();render();toast('ok','Bill deleted','')};
+  });
+}
+
+/* ---------- Bills view ---------- */
+var billFilter='today';
+function renderBills(){
+  var credit=S.bills.filter(function(b){return !b.paid});
+  var list=billFilter==='today'?todaysBills():billFilter==='credit'?credit:S.bills;
+  var h='<div class="section-h"><h2>Bills</h2><small>'+list.length+' shown</small></div>'+
+   '<div class="seg" id="b-f" style="margin-bottom:14px"><button data-v="today" aria-pressed="'+(billFilter==='today')+'">Today</button><button data-v="credit" aria-pressed="'+(billFilter==='credit')+'">Credit'+(credit.length?' ('+credit.length+')':'')+'</button><button data-v="all" aria-pressed="'+(billFilter==='all')+'">All</button></div>';
+  if(billFilter==='credit'&&credit.length){h+='<div class="kpi" style="margin-bottom:14px;background:var(--red-soft)"><span>Credit to collect</span><b>'+money(credit.reduce(function(a,b){return a+b.total},0))+'</b><small>'+credit.length+' unpaid bill'+(credit.length>1?'s':'')+'</small></div>'}
+  if(!list.length){h+='<div class="empty"><b>'+(billFilter==='credit'?'No credit due':'No bills yet')+'</b>'+(billFilter==='credit'?'Bills saved as Credit (khata) show here until they are paid.':'Stop a game and save the bill. It shows up here.')+'</div>'}
+  else{
+    var groups={},order=[];list.forEach(function(b){var k=dayKey(b.end);if(!groups[k]){groups[k]=[];order.push(k)}groups[k].push(b)});
+    order.forEach(function(k){var g=groups[k];var tot=g.reduce(function(a,b){return a+b.total},0);
+      h+='<div class="group-h" style="display:flex;justify-content:space-between"><span>'+dateStr(g[0].end)+'</span><span class="num">'+money(tot)+'</span></div><div class="list">'+
+      g.map(function(b){return '<button class="li" data-bill="'+b.id+'"><div class="grow"><div class="t">'+esc(b.table)+(b.customer?' · '+esc(b.customer):'')+'</div><div class="s">#'+b.no+' · '+timeStr(b.start)+' – '+timeStr(b.end)+' · '+durStr(b.playMs)+'</div></div><div style="text-align:right"><div class="v num">'+money(b.total)+'</div><span class="tag '+b.pay.toLowerCase()+'">'+(b.paid?b.pay:'Credit')+'</span></div></button>'}).join('')+'</div>'});
+  }
+  $('#main').innerHTML=h;
+  bindSeg($('#main'),'#b-f',function(v){billFilter=v;renderBills()});
+  $$('[data-bill]').forEach(function(x){x.onclick=function(){var b=S.bills.filter(function(y){return y.id===x.dataset.bill})[0];receiptSheet(b)}});
+}
+
+/* ---------- Reports view ---------- */
+var period='today';
+function periodRange(){var now=Date.now(),d0=startOfDay(now);
+  if(period==='today')return [d0,now,'Today'];if(period==='yday')return [d0-86400000,d0,'Yesterday'];if(period==='7d')return [d0-6*86400000,now,'Last 7 days'];return [d0-29*86400000,now,'Last 30 days']}
+function renderReports(){
+  var r=periodRange(),bills=S.bills.filter(function(b){return b.end>=r[0]&&b.end<r[1]});
+  var tot=0,tbl=0,can=0,disc=0,play=0,credit=0,byPay={Cash:0,UPI:0,Card:0,Credit:0},byTable={},byHour=new Array(24).fill(0),items={};
+  bills.forEach(function(b){tot+=b.total;tbl+=b.tableCharge;can+=b.itemsTotal;disc+=b.discount;play+=b.playMs;if(!b.paid)credit+=b.total;byPay[b.paid?b.pay:'Credit']+=b.total;
+    var k=b.table;byTable[k]=byTable[k]||{rev:0,ms:0,n:0};byTable[k].rev+=b.total;byTable[k].ms+=b.playMs;byTable[k].n++;
+    var h=new Date(b.start).getHours();byHour[h]+=b.playMs/3600000;
+    b.items.forEach(function(it){items[it.name]=(items[it.name]||0)+it.qty})});
+  var n=bills.length;
+  var h='<div class="section-h"><h2>Reports</h2><small>'+r[2]+'</small></div>'+
+   '<div class="pills" id="p-f" style="margin-bottom:14px">'+[['today','Today'],['yday','Yesterday'],['7d','7 days'],['30d','30 days']].map(function(p){return '<button class="pill" data-v="'+p[0]+'" aria-pressed="'+(period===p[0])+'">'+p[1]+'</button>'}).join('')+'</div>';
+  if(!n){h+='<div class="empty"><b>No games in this period</b>Saved bills are added up here: takings, busy hours and best tables.</div>';$('#main').innerHTML=h;bindPills();return}
+  h+='<div class="kpis"><div class="kpi hero"><span>Total billed</span><b class="num">'+money(tot)+'</b><small>'+n+' game'+(n>1?'s':'')+' · '+durStr(play)+' played'+(credit?' · '+money(credit)+' on credit':'')+'</small></div>'+
+   '<div class="kpi"><span>Table time</span><b class="num">'+money(tbl)+'</b></div><div class="kpi"><span>Canteen</span><b class="num">'+money(can)+'</b></div>'+
+   '<div class="kpi"><span>Avg per game</span><b class="num">'+money(tot/n)+'</b></div><div class="kpi"><span>Avg game length</span><b class="num">'+durStr(play/n)+'</b></div>'+
+   '<div class="kpi"><span>Discounts given</span><b class="num">'+money(disc)+'</b></div><div class="kpi"><span>Credit due</span><b class="num">'+money(credit)+'</b></div></div>';
+  var payMax=Math.max.apply(null,Object.keys(byPay).map(function(k){return byPay[k]}))||1;
+  h+='<div class="group-h">By payment</div><div class="panel">'+Object.keys(byPay).map(function(k){return '<div class="hbar"><span class="lbl">'+k+'</span><span class="track"><i style="width:'+(byPay[k]/payMax*100)+'%;background:var('+({Cash:'--ball-green',UPI:'--ball-blue',Card:'--ball-brown',Credit:'--ball-red'})[k]+')"></i></span><span class="val">'+money(byPay[k])+'</span></div>'}).join('')+'</div>';
+  var tk=Object.keys(byTable).sort(function(a,b){return byTable[b].rev-byTable[a].rev}),tMax=tk.length?byTable[tk[0]].rev:1;
+  h+='<div class="group-h">Tables by earnings</div><div class="panel">'+tk.map(function(k){var x=byTable[k];return '<div class="hbar"><span class="lbl">'+esc(k)+'</span><span class="track"><i style="width:'+(x.rev/tMax*100)+'%"></i></span><span class="val">'+money(x.rev)+' · '+(x.ms/3600000).toFixed(1)+' h</span></div>'}).join('')+'</div>';
+  var hrs=[];for(var i=0;i<24;i++)if(byHour[i]>0)hrs.push(i);var lo=Math.max(0,Math.min.apply(null,hrs)-1),hi=Math.min(23,Math.max.apply(null,hrs)+1),hm=Math.max.apply(null,byHour)||1;
+  var cols='',xs='';for(var j=lo;j<=hi;j++){cols+='<div class="'+(byHour[j]?'':'zero')+'" style="height:'+(byHour[j]/hm*100)+'%" title="'+byHour[j].toFixed(1)+' h"></div>';var hr=j%12||12;xs+='<span>'+((j-lo)%2===0?hr+(j<12?'a':'p'):'')+'</span>'}
+  h+='<div class="group-h">Busy hours <span style="text-transform:none;letter-spacing:0;font-weight:500">(table hours by start time)</span></div><div class="panel"><div class="cols">'+cols+'</div><div class="cols-x">'+xs+'</div></div>';
+  var ik=Object.keys(items).sort(function(a,b){return items[b]-items[a]}).slice(0,6);
+  if(ik.length){var iMax=items[ik[0]];h+='<div class="group-h">Top canteen items</div><div class="panel">'+ik.map(function(k){return '<div class="hbar"><span class="lbl">'+esc(k)+'</span><span class="track"><i style="width:'+(items[k]/iMax*100)+'%;background:var(--ball-pink)"></i></span><span class="val">'+items[k]+' sold</span></div>'}).join('')+'</div>'}
+  h+='<div class="row" style="margin-top:16px"><button class="btn" id="p-share">Share summary</button><button class="btn" id="p-csv">Copy as CSV</button></div>';
+  $('#main').innerHTML=h;bindPills();
+  $('#p-share').onclick=function(){var t='*'+S.settings.club+' · '+r[2]+'*\nGames: '+n+'\nPlayed: '+durStr(play)+'\nTable time: '+money(tbl)+'\nCanteen: '+money(can)+'\nDiscounts: '+money(disc)+'\n*Total billed: '+money(tot)+'*\nCash '+money(byPay.Cash)+' · UPI '+money(byPay.UPI)+' · Card '+money(byPay.Card)+' · Credit '+money(byPay.Credit);openExternal('https://wa.me/?text='+encodeURIComponent(t))};
+  $('#p-csv').onclick=function(){var rows=[['Bill','Date','Table','Customer','Start','End','Minutes','Table charge','Canteen','Discount','Total','Payment','Paid']];bills.forEach(function(b){rows.push([b.no,dateStr(b.end),b.table,b.customer,timeStr(b.start),timeStr(b.end),Math.round(b.playMs/60000),b.tableCharge,b.itemsTotal,b.discount,b.total,b.pay,b.paid?'Yes':'No'])});copyText(rows.map(function(r){return r.map(function(c){c=String(c==null?'':c);return /[",\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c}).join(',')}).join('\n'),'CSV copied — paste into Sheets or Excel')};
+  function bindPills(){$$('#p-f .pill').forEach(function(b){b.onclick=function(){period=b.dataset.v;renderReports()}})}
+}
+
+/* ---------- Settings view ---------- */
+function tog(id,on){return '<button class="toggle" role="switch" id="'+id+'" aria-checked="'+(!!on)+'"></button>'}
+function renderSettings(){
+  var st=S.settings;
+  var perm=NATIVE?'':(('Notification' in window)?Notification.permission:'unsupported');
+  var h='<div class="section-h"><h2>Settings</h2></div>'+
+   (!NATIVE&&window.CUEZONE_APK?'<div class="group-h">Android app</div><div class="list"><a class="li" style="color:inherit;text-decoration:none" href="'+esc(window.CUEZONE_APK)+'" target="_blank" rel="noopener"><div class="grow"><div class="t">Download CueZone for Android</div><div class="s">Alerts keep ringing even when the phone is locked</div></div><span class="btn sm primary">Get APK</span></a></div>':'')+
+   '<div class="group-h">Club</div><div class="list"><button class="li" id="s-club"><div class="grow"><div class="t">Club name</div><div class="s">'+esc(st.club)+'</div></div><span class="s">Edit</span></button>'+
+   '<button class="li" id="s-upi"><div class="grow"><div class="t">UPI ID for payment QR</div><div class="s">'+(st.upi?esc(st.upi):'Not set')+'</div></div><span class="s">Edit</span></button></div>'+
+   '<div class="group-h" style="display:flex;justify-content:space-between"><span>Tables & rates</span><button class="btn sm" id="s-addt">Add table</button></div><div class="list">'+S.tables.map(function(t){return '<button class="li" data-et="'+t.id+'"><div class="grow"><div class="t">'+esc(t.name)+'</div><div class="s">'+esc(t.type)+' · '+money(t.rate)+'/hr · min '+money(t.minCharge)+'</div></div>'+(t.s?'<span class="tag">In use</span>':'<span class="s">Edit</span>')+'</button>'}).join('')+'</div>'+
+   '<div class="group-h" style="display:flex;justify-content:space-between"><span>Canteen menu</span><button class="btn sm" id="s-addm">Add item</button></div><div class="list">'+S.menu.map(function(m){return '<button class="li" data-em="'+m.id+'"><div class="grow"><div class="t">'+esc(m.name)+'</div><div class="s">'+esc(m.cat||'')+'</div></div><span class="v num">'+money(m.price)+'</span></button>'}).join('')+'</div>'+
+   '<div class="group-h">Alerts</div><div class="list">'+
+   '<div class="li"><div class="grow"><div class="t">Warn before time is up</div><div class="s">Fixed-time games</div></div><div class="stepper"><button data-st="warnMin" data-d="-1" aria-label="Less">−</button><span>'+st.warnMin+'</span><button data-st="warnMin" data-d="1" aria-label="More">+</button></div><span class="s">min</span></div>'+
+   '<div class="li"><div class="grow"><div class="t">Remind on open games every</div><div class="s">0 turns it off</div></div><div class="stepper"><button data-st="remindEvery" data-d="-15" aria-label="Less">−</button><span>'+st.remindEvery+'</span><button data-st="remindEvery" data-d="15" aria-label="More">+</button></div><span class="s">min</span></div>'+
+   '<div class="li"><div class="grow"><div class="t">Pop-up notifications</div><div class="s">'+(NATIVE?'Shown even when the app is closed':(perm==='granted'?'Allowed in this browser':perm==='denied'?'Blocked in browser settings':'Tap Test to allow'))+'</div></div>'+tog('t-notify',st.notify)+'</div>'+
+   '<div class="li"><div class="grow"><div class="t">Alarm sound</div></div>'+tog('t-sound',st.sound)+'</div>'+
+   '<div class="li"><div class="grow"><div class="t">Vibrate</div></div>'+tog('t-vibrate',st.vibrate)+'</div>'+
+   '<div class="li"><div class="grow"><div class="t">Test alerts</div><div class="s">Plays the time-up sound and pop-up</div></div><button class="btn sm" id="s-test">Test</button></div></div>'+
+   '<div class="group-h">Billing</div><div class="list">'+
+   '<div class="li"><div class="grow"><div class="t">Round time up to</div><div class="s">Billed minutes are rounded up</div></div><div class="seg" id="s-round" style="flex:none">'+[1,5,15,30].map(function(v){return '<button data-v="'+v+'" aria-pressed="'+(st.round===v)+'" style="padding:0 10px">'+v+'</button>'}).join('')+'</div></div>'+
+   '<div class="li"><div class="grow"><div class="t">Charge full booked time</div><div class="s">Fixed games ending early still pay what was booked</div></div>'+tog('t-booked',st.bookedMin)+'</div></div>'+
+   '<div class="group-h">Backup</div><div class="list"><button class="li" id="s-backup"><div class="grow"><div class="t">Copy backup</div><div class="s">Copies all tables, menu and bills as text. Paste it into WhatsApp or Notes to keep it safe.</div></div></button>'+
+   '<button class="li" id="s-restore"><div class="grow"><div class="t">Restore from backup</div><div class="s">Paste a backup to load it on this phone</div></div></button>'+
+   '<button class="li" id="s-reset"><div class="grow"><div class="t" style="color:var(--ball-red)">Delete all bills</div><div class="s">Tables and menu stay</div></div></button></div>'+
+   '<p class="note" style="margin-top:18px;text-align:center">CueZone · data is stored on this device only</p>';
+  $('#main').innerHTML=h;
+  $('#s-club').onclick=function(){textSheet('Club name',st.club,function(v){st.club=v||st.club})};
+  $('#s-upi').onclick=function(){textSheet('UPI ID',st.upi,function(v){st.upi=v},'e.g. cuezone@okaxis')};
+  $('#s-addt').onclick=function(){tableEdit(null)};
+  $$('[data-et]').forEach(function(b){b.onclick=function(){tableEdit(T(b.dataset.et))}});
+  $('#s-addm').onclick=function(){menuEdit(null)};
+  $$('[data-em]').forEach(function(b){b.onclick=function(){menuEdit(S.menu.filter(function(m){return m.id===b.dataset.em})[0])}});
+  $$('[data-st]').forEach(function(b){b.onclick=function(){var k=b.dataset.st;st[k]=Math.max(0,Math.min(k==='warnMin'?30:240,st[k]+(+b.dataset.d)));save();S.tables.forEach(scheduleNative);renderSettings()}});
+  [['t-notify','notify'],['t-sound','sound'],['t-vibrate','vibrate'],['t-booked','bookedMin']].forEach(function(p){$('#'+p[0]).onclick=function(){st[p[1]]=!st[p[1]];save();
+    if(p[1]==='notify'&&st.notify)askPermission();S.tables.forEach(scheduleNative);renderSettings()}});
+  bindSeg($('#main'),'#s-round',function(v){st.round=+v;save()});
+  $('#s-test').onclick=function(){unlockAudio();askPermission();beep('end');buzz('end');
+    if(LN){LN.schedule({notifications:[{id:99,title:'Test: Time up on '+(S.tables[0]?S.tables[0].name:'Table 1'),body:'This is how the alert will look.',channelId:'cuezone-alerts',schedule:{at:new Date(Date.now()+2000),allowWhileIdle:true}}]}).catch(function(){})}
+    else{try{if(window.Notification&&Notification.permission==='granted')new Notification('Test: Time up',{body:'This is how the alert will look.'})}catch(e){}}
+    toast('warn','Test alert','Time up pop-ups look and sound like this')};
+  $('#s-backup').onclick=function(){copyText(JSON.stringify(S),'Backup copied')};
+  $('#s-restore').onclick=function(){openSheet('Restore backup','<div class="field"><label for="rs">Paste backup text</label><textarea class="input" id="rs"></textarea></div><button class="btn primary block" id="rs-go">Restore</button><p class="note" style="margin-top:12px">This replaces everything on this phone.</p>',function(sh){$('#rs-go',sh).onclick=function(){try{var o=JSON.parse($('#rs',sh).value);if(!o||o.v!==1||!o.tables)throw 0;S=o;save();S.tables.forEach(scheduleNative);closeSheet();render();toast('ok','Backup restored',S.bills.length+' bills loaded')}catch(e){toast('warn','That is not a CueZone backup','Copy the full backup text and try again')}}})};
+  var armed=false;$('#s-reset').onclick=function(){if(!armed){armed=true;$('.t',this).textContent='Tap again to delete '+S.bills.length+' bills';return}S.bills=[];S.demo=false;save();render();toast('ok','Bills deleted','')};
+}
+function askPermission(){
+  if(LN){LN.requestPermissions().catch(function(){});if(LN.checkExactNotificationSetting){LN.checkExactNotificationSetting().then(function(r){if(r&&r.exact_alarm&&r.exact_alarm!=='granted'&&LN.changeExactNotificationSetting)LN.changeExactNotificationSetting()}).catch(function(){})}return}
+  try{if(window.Notification&&Notification.permission==='default')Notification.requestPermission().then(function(){if(tab==='settings')renderSettings()})}catch(e){}
+}
+function textSheet(title,val,cb,ph){openSheet(esc(title),'<div class="field"><input class="input" id="ts" value="'+esc(val)+'" placeholder="'+esc(ph||'')+'" autocomplete="off"></div><button class="btn primary block" id="ts-go">Save</button>',function(sh){$('#ts',sh).focus();$('#ts-go',sh).onclick=function(){cb($('#ts',sh).value.trim());save();closeSheet();render()}})}
+function tableEdit(t){
+  var isNew=!t;t=t||{name:'Table '+(S.tables.length+1),type:'Snooker',rate:300,minCharge:60};
+  var body='<div class="field"><label for="te-n">Table name</label><input class="input" id="te-n" value="'+esc(t.name)+'"></div>'+
+   '<div class="field"><label for="te-t">Game</label><select class="input" id="te-t">'+['Snooker','Pool','8-Ball','Billiards','Carrom','PS5','Other'].map(function(x){return '<option'+(x===t.type?' selected':'')+'>'+x+'</option>'}).join('')+'</select></div>'+
+   '<div class="row" style="flex-wrap:nowrap"><div class="field" style="flex:1"><label for="te-r">Rate per hour</label><input class="input" id="te-r" inputmode="numeric" value="'+t.rate+'"></div><div class="field" style="flex:1"><label for="te-m">Minimum charge</label><input class="input" id="te-m" inputmode="numeric" value="'+t.minCharge+'"></div></div>'+
+   (t.s?'<p class="note">A game is running here. The new rate applies from the next game.</p>':'')+
+   '<button class="btn primary block" id="te-go">'+(isNew?'Add table':'Save')+'</button>'+(!isNew&&!t.s?'<button class="btn danger block" id="te-del" style="margin-top:10px">Remove table</button>':'');
+  openSheet(isNew?'New table':esc(t.name),body,function(sh){
+    $('#te-go',sh).onclick=function(){t.name=$('#te-n',sh).value.trim()||t.name;t.type=$('#te-t',sh).value;t.rate=Math.max(0,parseInt($('#te-r',sh).value,10)||0);t.minCharge=Math.max(0,parseInt($('#te-m',sh).value,10)||0);if(isNew){t.id=uid();t.nid=S.nextNid++;t.s=null;S.tables.push(t)}save();closeSheet();render()};
+    var d=$('#te-del',sh),armed=false;if(d)d.onclick=function(){if(!armed){armed=true;d.textContent='Tap again to remove';return}S.tables=S.tables.filter(function(x){return x!==t});save();closeSheet();render()};
+  });
+}
+function menuEdit(m){
+  var isNew=!m;m=m||{name:'',price:0,cat:'Snacks'};
+  openSheet(isNew?'New menu item':esc(m.name),'<div class="field"><label for="me-n">Item name</label><input class="input" id="me-n" value="'+esc(m.name)+'" placeholder="e.g. Lassi"></div><div class="row" style="flex-wrap:nowrap"><div class="field" style="flex:1"><label for="me-p">Price</label><input class="input" id="me-p" inputmode="numeric" value="'+(m.price||'')+'"></div><div class="field" style="flex:1"><label for="me-c">Category</label><input class="input" id="me-c" value="'+esc(m.cat||'')+'"></div></div><button class="btn primary block" id="me-go">'+(isNew?'Add item':'Save')+'</button>'+(isNew?'':'<button class="btn danger block" id="me-del" style="margin-top:10px">Remove item</button>'),function(sh){
+    $('#me-go',sh).onclick=function(){var n=$('#me-n',sh).value.trim();if(!n){$('#me-n',sh).focus();return}m.name=n;m.price=Math.max(0,parseInt($('#me-p',sh).value,10)||0);m.cat=$('#me-c',sh).value.trim();if(isNew){m.id=uid();S.menu.push(m)}save();closeSheet();render()};
+    var d=$('#me-del',sh),armed=false;if(d)d.onclick=function(){if(!armed){armed=true;d.textContent='Tap again to remove';return}S.menu=S.menu.filter(function(x){return x!==m});save();closeSheet();render()};
+  });
+}
+
+/* ---------- Boot ---------- */
+render();
+setInterval(function(){tick()},1000);
+document.addEventListener('visibilitychange',function(){if(!document.hidden)tick(true)});
+setInterval(function(){if(tab==='tables'&&$('#sheet').hidden)renderTop()},30000);
+initNative();
+})();
+</script>
+
+<script>if("serviceWorker" in navigator)addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})</script>
+</body>
+</html>

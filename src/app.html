@@ -209,6 +209,16 @@ textarea.input{padding:12px 14px;min-height:110px;font-size:13px;font-family:ui-
 .modal h3{font-family:var(--display);font-size:28px;text-transform:uppercase;margin:0;letter-spacing:.03em}
 .modal p{color:var(--muted);margin:4px 0 16px}
 .modal .row{margin-top:8px}
+/* Activation lock */
+.lock{min-height:100%;display:flex;flex-direction:column;justify-content:center;gap:18px;max-width:440px;margin:0 auto;padding-block:32px;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
+.lock .logo{width:72px;height:72px;border-radius:50%;background:var(--ball-red);box-shadow:inset -10px -10px 18px rgba(0,0,0,.3),inset 8px 8px 12px rgba(255,255,255,.35),0 0 0 6px var(--baize-soft)}
+.lock h1{font-family:var(--display);font-size:34px;text-transform:uppercase;letter-spacing:.03em;margin:0;line-height:1.05}
+.lock p{margin:0;color:var(--muted)}
+.lock textarea{width:100%;min-height:92px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);padding:12px 14px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;letter-spacing:.06em;text-transform:uppercase;resize:none;line-height:1.5}
+.lock textarea:focus{border-color:var(--baize);outline:none}
+.lock .count{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:-10px}
+.lock .err{color:var(--ball-red);font-weight:600;font-size:14px;min-height:20px}
+.lock .ok{color:var(--ball-green)}
 </style>
 
 <header class="top" id="top"></header>
@@ -681,6 +691,7 @@ function renderSettings(){
    '<div class="group-h">Backup</div><div class="list"><button class="li" id="s-backup"><div class="grow"><div class="t">Copy backup</div><div class="s">Copies all tables, menu and bills as text. Paste it into WhatsApp or Notes to keep it safe.</div></div></button>'+
    '<button class="li" id="s-restore"><div class="grow"><div class="t">Restore from backup</div><div class="s">Paste a backup to load it on this phone</div></div></button>'+
    '<button class="li" id="s-reset"><div class="grow"><div class="t" style="color:var(--ball-red)">Delete all bills</div><div class="s">Tables and menu stay</div></div></button></div>'+
+   (window.CUEZONE_DEMO?'':'<div class="group-h">Licence</div><div class="list"><div class="li"><div class="grow"><div class="t">Activated</div><div class="s">Key ending '+esc(cleanKey(storedKey()).slice(-8))+'</div></div><span class="tag cash">Active</span></div></div>')+
    '<p class="note" style="margin-top:18px;text-align:center">CueZone · data is stored on this device only</p>';
   $('#main').innerHTML=h;
   $('#s-club').onclick=function(){textSheet('Club name',st.club,function(v){st.club=v||st.club})};
@@ -726,11 +737,65 @@ function menuEdit(m){
   });
 }
 
+/* ---------- Activation key ---------- */
+var LIC_KEY='cuezone.license';
+var LIC_HASHES=['7a80f8046dba3dfe057b5ddb55f69f658ebe3af35fa677e14d8e1fdc0345c08e'];
+function sha256(str){
+  var K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  var H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  var b=unescape(encodeURIComponent(str)),n=b.length,words=[],i;
+  for(i=0;i<n;i++)words[i>>2]|=(b.charCodeAt(i)&255)<<(24-(i%4)*8);
+  words[n>>2]|=0x80<<(24-(n%4)*8);words[((n+8)>>6<<4)+15]=n*8;
+  var W=new Array(64);
+  for(var j=0;j<words.length;j+=16){
+    var a=H[0],bb=H[1],c=H[2],d=H[3],e=H[4],f=H[5],g=H[6],h=H[7];
+    for(i=0;i<64;i++){
+      if(i<16)W[i]=words[j+i]|0;else{var x=W[i-15],y=W[i-2];W[i]=(((x>>>7|x<<25)^(x>>>18|x<<14)^(x>>>3))+W[i-7]+((y>>>17|y<<15)^(y>>>19|y<<13)^(y>>>10))+W[i-16])|0}
+      var t1=(h+((e>>>6|e<<26)^(e>>>11|e<<21)^(e>>>25|e<<7))+((e&f)^(~e&g))+K[i]+W[i])|0;
+      var t2=(((a>>>2|a<<30)^(a>>>13|a<<19)^(a>>>22|a<<10))+((a&bb)^(a&c)^(bb&c)))|0;
+      h=g;g=f;f=e;e=(d+t1)|0;d=c;c=bb;bb=a;a=(t1+t2)|0;
+    }
+    H[0]=(H[0]+a)|0;H[1]=(H[1]+bb)|0;H[2]=(H[2]+c)|0;H[3]=(H[3]+d)|0;H[4]=(H[4]+e)|0;H[5]=(H[5]+f)|0;H[6]=(H[6]+g)|0;H[7]=(H[7]+h)|0;
+  }
+  return H.map(function(v){return ('00000000'+(v>>>0).toString(16)).slice(-8)}).join('');
+}
+function cleanKey(v){return String(v||'').toUpperCase().replace(/[^0-9A-F]/g,'')}
+function keyOk(k){k=cleanKey(k);return k.length===64&&LIC_HASHES.indexOf(sha256(k))>=0}
+function storedKey(){try{return localStorage.getItem(LIC_KEY)||''}catch(e){return ''}}
+function licensed(){return !!window.CUEZONE_DEMO||keyOk(storedKey())}
+function showLock(){
+  ['#top','#main','#tabs'].forEach(function(q){$(q).hidden=true});
+  var w=document.createElement('section');w.className='lock';w.id='lock';
+  w.innerHTML='<div class="logo" aria-hidden="true"></div><div><h1>Activate CueZone</h1></div>'+
+   '<p>Enter the 64-character activation key you received with the app. You only need to do this once on this phone.</p>'+
+   '<label for="lk" class="group-h" style="margin:0">Activation key</label>'+
+   '<textarea id="lk" spellcheck="false" autocomplete="off" autocapitalize="characters" placeholder="XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX"></textarea>'+
+   '<div class="count"><span id="lk-n">0 / 64</span><span>Letters A–F and numbers 0–9</span></div>'+
+   '<div class="err" id="lk-err" role="alert"></div>'+
+   '<button class="btn primary block" id="lk-go" disabled>Activate</button>'+
+   '<p style="font-size:13px">No key? Contact Vormir Tech Solutions.</p>';
+  document.body.appendChild(w);
+  var ta=$('#lk'),go=$('#lk-go'),err=$('#lk-err'),n=$('#lk-n');
+  function upd(){var k=cleanKey(ta.value);n.textContent=k.length+' / 64';n.className=k.length===64?'ok':'';go.disabled=k.length!==64;err.textContent=k.length>64?'That is longer than 64 characters. Check for extra text.':''}
+  ta.oninput=upd;
+  go.onclick=function(){
+    var k=cleanKey(ta.value);
+    if(!keyOk(k)){err.textContent='This key is not valid. Check it and try again.';ta.focus();return}
+    try{localStorage.setItem(LIC_KEY,k)}catch(e){}
+    w.remove();['#top','#main','#tabs'].forEach(function(q){$(q).hidden=false});
+    boot();toast('ok','CueZone activated','Welcome! Set up your tables in Settings.');
+  };
+  setTimeout(function(){ta.focus()},300);
+}
+
 /* ---------- Boot ---------- */
+function boot(){
 render();
 setInterval(function(){tick()},1000);
 document.addEventListener('visibilitychange',function(){if(!document.hidden)tick(true)});
 setInterval(function(){if(tab==='tables'&&$('#sheet').hidden)renderTop()},30000);
 initNative();
+}
+if(licensed())boot();else showLock();
 })();
 </script>

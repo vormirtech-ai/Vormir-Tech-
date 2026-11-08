@@ -33,6 +33,18 @@ jobs:
       - name: Build app and copy into Android project
         run: npm run build && npx cap sync android
 
+      - name: Load the CueZone signing key
+        env:
+          KS: ${{ secrets.CUEZONE_KEYSTORE }}
+        run: |
+          if [ -n "$KS" ]; then
+            echo "$KS" | base64 -d > "$RUNNER_TEMP/cuezone.keystore"
+            echo "CUEZONE_KS_PATH=$RUNNER_TEMP/cuezone.keystore" >> "$GITHUB_ENV"
+            echo "Signing with the permanent CueZone key"
+          else
+            echo "::warning::CUEZONE_KEYSTORE secret is missing. This APK uses a temporary key and will not install as an update over older versions."
+          fi
+
       - name: Build APK
         working-directory: android
         run: |

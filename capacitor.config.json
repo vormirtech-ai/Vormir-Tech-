@@ -1,0 +1,10 @@
+{
+  "appId": "com.vormirtech.playden",
+  "appName": "PlayDen",
+  "webDir": "www",
+  "android": { "backgroundColor": "#0B0E13" },
+  "plugins": {
+    "SystemBars": { "insetsHandling": "css", "initialViewportFitValueHint": "cover", "style": "DARK" },
+    "LocalNotifications": { "smallIcon": "ic_stat_pad", "iconColor": "#FF6B3D" }
+  }
+}

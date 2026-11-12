@@ -1,0 +1,64 @@
+name: Build PlayDen APK
+
+on:
+  push:
+    branches: [playden-app]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install packages
+        run: npm ci
+
+      - name: Build app and copy into Android project
+        run: npm run build && npx cap sync android
+
+      - name: Load the permanent signing key
+        env:
+          KS: ${{ secrets.CUEZONE_KEYSTORE }}
+        run: |
+          if [ -n "$KS" ]; then
+            echo "$KS" | base64 -d > "$RUNNER_TEMP/app.keystore"
+            echo "CUEZONE_KS_PATH=$RUNNER_TEMP/app.keystore" >> "$GITHUB_ENV"
+            echo "Signing with the permanent key"
+          else
+            echo "::warning::CUEZONE_KEYSTORE secret is missing. This APK uses a temporary key and will not install as an update over older versions."
+          fi
+
+      - name: Build APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk ../PlayDen.apk
+
+      - name: Upload APK (Actions tab)
+        uses: actions/upload-artifact@v4
+        with:
+          name: PlayDen-APK
+          path: PlayDen.apk
+
+      - name: Publish to the fixed download link
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: playden-latest
+          name: PlayDen (latest build)
+          make_latest: false
+          body: "Build ${{ github.run_number }}. Install PlayDen.apk on your Android phone (allow \"Install unknown apps\" when asked). Needs the activation key."
+          files: PlayDen.apk
